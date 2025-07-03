@@ -51,11 +51,11 @@ The BMP180 sensor should be connected via I2C:
 - [x] Basic project structure setup
 - [x] BMP180 library integration
 - [x] Basic sensor reading functionality
-- [ ] Display integration
-- [ ] Maximum altitude tracking
-- [ ] Data logging
-- [ ] Battery monitoring
-- [ ] User interface
+- [x] Display integration (TFT screen)
+- [x] Maximum altitude tracking
+- [x] Data logging (to SPIFFS)
+- [x] Battery monitoring (Voltage display)
+- [x] User interface (Button for Max Alt Reset)
 
 ## Build Instructions
 1. Install PlatformIO
@@ -68,5 +68,34 @@ The BMP180 sensor should be connected via I2C:
 - ESP32 Arduino Framework
 - Wire library (I2C communication)
 - BMP180 library by enjoyneering
+- TFT_eSPI library by Bodmer (for display)
+- SPIFFS (for data logging)
+
+## Suggestions for Future Enhancements
+- **Advanced User Interface:**
+    - Use more buttons (if available on the triple base) or touch screen capabilities (if display supports it) for navigation.
+    - Menu system for settings (e.g., sea level pressure calibration, logging interval).
+    - Start/Stop data logging via UI.
+    - Option to clear SPIFFS data log.
+- **Improved Data Logging:**
+    - Real-time clock (RTC) module for accurate timestamps instead of `millis()`.
+    - Option to log data to an SD card if a module is added (larger storage, easier retrieval).
+    - Data format selection (e.g., JSON, binary).
+- **Power Management:**
+    - Implement deep sleep modes to conserve battery when not actively logging or if altitude is stable.
+    - More accurate battery percentage calculation (e.g., using a discharge curve for the specific LiPo battery).
+- **Sensor Calibration:**
+    - Allow manual input of current sea level pressure for more accurate altitude readings.
+    - Temperature compensation for sensor readings if not already handled adequately by the library.
+- **Connectivity & Data Offloading:**
+    - Use Wi-Fi or Bluetooth to transmit data to a phone or computer.
+    - Web server on ESP32 to view live data or download logs.
+- **Physical Enhancements:**
+    - 3D printed case for the altimeter.
+    - Buzzer for audible alerts (e.g., apogee reached, low battery).
+- **Code Refinements:**
+    - ADC calibration for more accurate battery voltage.
+    - More robust error handling and display messages.
+    - Modularize code into separate files for better organization (e.g., display_handler.cpp, logger.cpp).
 
 
