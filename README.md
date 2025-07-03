@@ -51,7 +51,7 @@ The BMP180 sensor should be connected via I2C:
 - [x] Basic project structure setup
 - [x] BMP180 library integration
 - [x] Basic sensor reading functionality
-- [ ] Display integration
+- [ ] TFT Display integration
 - [ ] Maximum altitude tracking
 - [ ] Data logging
 - [ ] Battery monitoring
