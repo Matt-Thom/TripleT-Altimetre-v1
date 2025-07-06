@@ -26,6 +26,10 @@ It will store the largest altitude recorded until reset.
 - Altitude calculation in meters
 - Serial output for debugging and monitoring
 - 2-second reading interval
+- **WiFi Access Point**: Device creates "Altimeter-AP" network
+- **Web Interface**: Real-time statistics viewable via web browser
+- **Persistent Storage**: Maximum altitude stored in flash memory
+- **Remote Reset**: Max altitude can be reset via web interface
 
 ## BMP180 Sensor Specifications
 - Supply voltage: 1.8V - 3.6V
@@ -48,6 +52,20 @@ The BMP180 sensor should be connected via I2C:
 3. Open the serial monitor at 115200 baud
 4. The device will display temperature, pressure, and altitude readings every 2 seconds
 
+### WiFi Web Interface
+1. The device creates a WiFi Access Point named "Altimeter-AP"
+2. Default password: "altimeter123"
+3. Connect your phone/computer to the WiFi network
+4. Open a web browser and go to: http://192.168.4.1
+5. View real-time statistics including:
+   - Current altitude
+   - Maximum altitude (persistent)
+   - Temperature
+   - Pressure
+   - Battery voltage
+   - Device uptime
+6. Use the web interface to reset maximum altitude remotely
+
 ## Development Status
 - [x] Basic project structure setup
 - [x] BMP180 library integration
@@ -58,6 +76,10 @@ The BMP180 sensor should be connected via I2C:
 - [x] Battery monitoring (Voltage display)
 - [x] User interface (Button for Max Alt Reset)
 - [x] Fixed File class namespace compilation issues
+- [x] WiFi Access Point functionality
+- [x] Web server with real-time statistics
+- [x] Persistent max altitude storage
+- [x] Remote max altitude reset via web interface
 
 ## Recent Updates
 
@@ -88,6 +110,9 @@ The BMP180 sensor should be connected via I2C:
 - Adafruit BusIO library (for I2C abstraction)
 - TFT_eSPI library by Bodmer (for display)
 - SPIFFS (for data logging)
+- WiFi library (for Access Point)
+- ESPAsyncWebServer library (for web interface)
+- AsyncTCP library (for web server)
 
 ## Suggestions for Future Enhancements
 - **Advanced User Interface:**

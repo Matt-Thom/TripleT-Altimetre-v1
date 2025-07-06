@@ -1,37 +1,29 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_BMP085.h>
-#include <TFT_eSPI.h> // Include TFT_eSPI library
-#include <SPI.h>
-#include "FS.h" // For SPIFFS
-#include "SPIFFS.h" // For SPIFFS
+#include "FS.h"
+#include "SPIFFS.h"
 
 Adafruit_BMP085 bmp180;
-float maxAltitude = 0.0; // Variable to store maximum altitude
-
-TFT_eSPI tft = TFT_eSPI(); // Initialize TFT_eSPI object
+float maxAltitude = 0.0;
 
 const char* dataLogFile = "/datalog.csv";
-const int BATTERY_PIN = 1; // ADC1_CH0, GPIO1 for battery voltage reading
-// Voltage divider parameters (adjust if your shield is different)
-// Common D1 Mini Battery Shield R1=220k, R2=100k (for 3.3V ADC)
-// Or R1=100k, R2=27k (if shield expects 5V tolerant ADC but ESP32 ADC is 3.3V)
-// Assuming a voltage divider that maps battery voltage (e.g. 0-4.2V for LiPo) to ADC range (e.g. 0-3.3V)
-// Example: Shield provides Vbat/2 -> ADC_reading * 2 * (3.3/4095)
-// For LOLIN S3 Mini Pro, the VBAT pin is connected to ADC1_CH0 (GPIO 1) with a 100K/100K divider.
-// So, Battery Voltage = ADC Voltage * 2.
-// ADC Voltage = (ADC Reading / 4095.0) * 3.3 (assuming 3.3V Vref and 12-bit ADC)
-// Battery Voltage = (ADC Reading / 4095.0) * 3.3 * 2.0
-
-const int BUTTON_PIN = 0; // GPIO0 is usually the BOOT button, accessible on many ESP32 boards
+const int BATTERY_PIN = 1;
+const int BUTTON_PIN = 0;
 unsigned long lastButtonPressTime = 0;
-const unsigned long debounceDelay = 50; // 50 ms debounce delay
+const unsigned long debounceDelay = 50;
+
+// Function to read battery voltage
+float readBatteryVoltage() {
+  int adcValue = analogRead(BATTERY_PIN);
+  float batteryVoltage = (adcValue / 4095.0) * 3.3 * 2.0;
+  return batteryVoltage;
+}
 
 // Function to initialize SPIFFS
 void initSPIFFS() {
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
-    tft.println("SPIFFS Mount Failed");
     return;
   }
   Serial.println("SPIFFS mounted successfully");
@@ -42,7 +34,6 @@ void initSPIFFS() {
     fs::File file = SPIFFS.open(dataLogFile, FILE_WRITE);
     if (!file) {
       Serial.println("Failed to create file");
-      tft.println("Log File Error");
       return;
     }
     file.println("Timestamp,Temperature_C,Pressure_Pa,Altitude_m");
@@ -58,8 +49,6 @@ void logData(float temp, float pres, float alt) {
   fs::File file = SPIFFS.open(dataLogFile, FILE_APPEND);
   if (!file) {
     Serial.println("Failed to open file for appending");
-    tft.setCursor(0, tft.height() - 8); // Position at bottom
-    tft.print("Log Error!");
     return;
   }
 
@@ -70,142 +59,135 @@ void logData(float temp, float pres, float alt) {
     Serial.println("Data logged: " + dataString);
   } else {
     Serial.println("Write failed");
-    tft.setCursor(0, tft.height() - 8); // Position at bottom
-    tft.print("Log Write Fail!");
   }
   file.close();
 }
 
-// Function to read battery voltage
-float readBatteryVoltage() {
-  int adcValue = analogRead(BATTERY_PIN);
-  // ESP32-S3 ADC is 12-bit (0-4095). Default Vref is usually 3.3V.
-  // For LOLIN S3 Mini Pro, VBAT is connected to ADC1_CH0 (GPIO1) via a 100K/100K divider.
-  // So, Battery Voltage = (ADC Reading / 4095.0) * Vref * 2.0
-  // We might need to calibrate Vref or use internal Vref for better accuracy.
-  // For now, assume Vref = 3.3V.
-  float batteryVoltage = (adcValue / 4095.0) * 3.3 * 2.0;
-  return batteryVoltage;
-}
-
 void setup() {
+  // Initialize serial communication (USB CDC)
   Serial.begin(115200);
-  Serial.println("BMP180 Altimeter Test");
+  delay(3000); // Wait longer for USB CDC to initialize
+  Serial.println("===== BMP180 Altimeter v1.0 (Serial Only) =====");
+  Serial.println("Board: LOLIN S3 Mini");
+  Serial.println("Flash: 4MB");
+  Serial.println("PSRAM: Disabled");
+  Serial.println("Initializing...");
+  Serial.flush();
 
   // Configure ADC
-  analogReadResolution(12); // Set ADC resolution to 12-bit (0-4095)
-  // adcAttachPin(BATTERY_PIN); // Attach ADC pin (may not be needed for all ESP32 cores/pins with analogRead)
+  analogReadResolution(12);
 
-  // Initialize TFT display
-  tft.init();
-  tft.setRotation(0); // Adjust rotation as needed (0-3)
+  // Initialize I2C communication with explicit pins for ESP32-S3
+  Serial.println("Initializing I2C...");
+  Wire.begin(8, 9); // SDA=GPIO8, SCL=GPIO9 for LOLIN S3 Mini
+  Serial.println("I2C initialized with SDA=8, SCL=9");
 
-  // Initialize Button Pin
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(1); // Smallest text size
-  tft.setCursor(0, 0);
-  tft.println("Altimeter Initializing...");
-  
-  // Initialize I2C communication
-  Wire.begin();
-  
   // Initialize BMP180 sensor
+  Serial.println("Initializing BMP180 sensor...");
   if (!bmp180.begin()) {
     Serial.println("Could not find BMP180 sensor, check wiring!");
-    tft.println("BMP180 Error!");
-    while (1);
+    Serial.println("Check connections:");
+    Serial.println("SDA -> GPIO8");
+    Serial.println("SCL -> GPIO9");
+    Serial.println("VCC -> 3.3V");
+    Serial.println("GND -> GND");
+    while (1) {
+      delay(1000);
+      Serial.println("BMP180 sensor not found - check connections");
+    }
   }
   Serial.println("BMP180 sensor initialized successfully!");
-  tft.println("BMP180 OK");
 
   // Initialize SPIFFS
+  Serial.println("Initializing SPIFFS...");
   initSPIFFS();
-  tft.println("SPIFFS OK"); // Assuming initSPIFFS handles its own error messages on Serial/TFT for critical failure
+  Serial.println("SPIFFS initialized");
 
-  delay(1000); // Show init messages
-  tft.fillScreen(TFT_BLACK); // Clear screen for data
+  // Initialize button pin
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  Serial.println("Button initialized on GPIO0");
+
+  Serial.println("=== Altimeter Ready ===");
+  Serial.println("Press button to reset max altitude");
+  Serial.println("Data will be displayed in serial monitor");
 }
 
 void loop() {
-  // Read temperature and pressure
-  float temperature = bmp180.readTemperature();
-  float pressure = bmp180.readPressure();
-  float altitude = bmp180.readAltitude();
+  static unsigned long lastSensorRead = 0;
+  static unsigned long lastDisplayUpdate = 0;
+  static unsigned long lastLogWrite = 0;
+  const unsigned long sensorInterval = 1000; // Read sensor every 1 second
+  const unsigned long displayInterval = 2000;  // Update display every 2 seconds
+  const unsigned long logInterval = 5000;     // Log data every 5 seconds
 
-  // Update maximum altitude
-  if (altitude > maxAltitude) {
-    maxAltitude = altitude;
-  }
+  unsigned long currentTime = millis();
 
-  // Log data
-  logData(temperature, pressure, altitude);
-  
-  // Print readings
-  Serial.print("Temperature: ");
-  Serial.print(temperature);
-  Serial.println(" °C");
-  
-  Serial.print("Pressure: ");
-  Serial.print(pressure);
-  Serial.println(" Pa");
-  
-  Serial.print("Altitude: ");
-  Serial.print(altitude);
-  Serial.println(" m");
-
-  Serial.print("Max Altitude: ");
-  Serial.print(maxAltitude);
-  Serial.println(" m");
-  
-  Serial.println("---");
-
-  // Display data on TFT
-  tft.fillScreen(TFT_BLACK); // Clear screen before drawing
-  tft.setCursor(0, 0);
-  tft.setTextSize(2); // Larger text for altitude
-
-  tft.print("Alt: ");
-  tft.print(altitude, 1); // 1 decimal place
-  tft.println(" m");
-
-  tft.print("Max: ");
-  tft.print(maxAltitude, 1); // 1 decimal place
-  tft.println(" m");
-
-  tft.setTextSize(1); // Smaller text for other data
-  tft.print("Temp: ");
-  tft.print(temperature, 1);
-  tft.println(" C");
-
-  tft.print("Pres: ");
-  tft.print(pressure / 100.0, 2); // Convert Pa to hPa, 2 decimal places
-  tft.println(" hPa");
-
-  // Read and display battery voltage
-  float batteryVolts = readBatteryVoltage();
-  tft.print("Batt: ");
-  tft.print(batteryVolts, 2); // 2 decimal places
-  tft.println(" V");
-
-  Serial.print("Battery Voltage: ");
-  Serial.print(batteryVolts);
-  Serial.println(" V");
-
-  // Check for button press to reset max altitude
-  if (digitalRead(BUTTON_PIN) == LOW) { // Button is pressed (assuming pull-up, so LOW when pressed)
-    if (millis() - lastButtonPressTime > debounceDelay) {
-      Serial.println("Button pressed - Max Altitude Reset!");
-      tft.setCursor(0, tft.height() - 16); // Position for message
-      tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-      tft.print("Max Alt Reset!");
-      maxAltitude = altitude; // Reset to current altitude, or use 0.0 if preferred
-      lastButtonPressTime = millis();
-      delay(200); // Brief delay to show message and allow button release
-      tft.setTextColor(TFT_WHITE, TFT_BLACK); // Reset text color
+  // Read sensor data
+  if (currentTime - lastSensorRead >= sensorInterval) {
+    float temperature = bmp180.readTemperature();
+    float pressure = bmp180.readPressure();
+    float altitude = bmp180.readAltitude();
+    
+    // Update maximum altitude
+    if (altitude > maxAltitude) {
+      maxAltitude = altitude;
     }
+
+    // Check button press for max altitude reset
+    if (digitalRead(BUTTON_PIN) == LOW) {
+      unsigned long currentButtonTime = millis();
+      if (currentButtonTime - lastButtonPressTime > debounceDelay) {
+        maxAltitude = altitude; // Reset max altitude to current altitude
+        Serial.println("*** MAX ALTITUDE RESET ***");
+        Serial.println("Max altitude reset to: " + String(maxAltitude) + " m");
+        lastButtonPressTime = currentButtonTime;
+      }
+    }
+
+    // Log data periodically
+    if (currentTime - lastLogWrite >= logInterval) {
+      logData(temperature, pressure, altitude);
+      lastLogWrite = currentTime;
+    }
+
+    lastSensorRead = currentTime;
   }
-  
-  delay(2000); // Wait 2 seconds before next reading
+
+  // Update display (serial output)
+  if (currentTime - lastDisplayUpdate >= displayInterval) {
+    float temperature = bmp180.readTemperature();
+    float pressure = bmp180.readPressure();
+    float altitude = bmp180.readAltitude();
+    float batteryVoltage = readBatteryVoltage();
+
+    // Display data via serial
+    Serial.println("=== BMP180 Altimeter Data ===");
+    Serial.print("Current Altitude: ");
+    Serial.print(altitude, 1);
+    Serial.println(" m");
+    
+    Serial.print("Maximum Altitude: ");
+    Serial.print(maxAltitude, 1);
+    Serial.println(" m");
+    
+    Serial.print("Temperature: ");
+    Serial.print(temperature, 1);
+    Serial.println(" °C");
+    
+    Serial.print("Pressure: ");
+    Serial.print(pressure / 100.0, 1);
+    Serial.println(" hPa");
+    
+    Serial.print("Battery Voltage: ");
+    Serial.print(batteryVoltage, 2);
+    Serial.println(" V");
+    
+    Serial.println("Press button (GPIO0) to reset max altitude");
+    Serial.println("=============================");
+    Serial.println();
+
+    lastDisplayUpdate = currentTime;
+  }
+
+  delay(10); // Small delay to prevent excessive CPU usage
 }
