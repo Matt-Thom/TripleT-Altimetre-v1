@@ -165,7 +165,7 @@ void setup() {
   Serial.println("🚀 ALTIMETER READY!");
   Serial.println("========================================");
   Serial.println("Controls:");
-  Serial.println("  Button A (GPIO0)  - Reset altitude to zero");
+  Serial.println("  Button A (GPIO0)  - Reset max altitude to zero");
   Serial.println("  Button B (GPIO47) - Toggle display mode");
   Serial.println("  Button C (GPIO48) - Toggle display on/off");
   Serial.println("========================================");
@@ -201,16 +201,15 @@ void loop() {
 void handleButtons() {
   unsigned long now = millis();
   
-  // Button A - Reset altitude to zero
+  // Button A - Reset max altitude only
   bool button_a_current = (digitalRead(BUTTON_A_PIN) == LOW);
   if (button_a_current && !button_a_pressed && (now - last_button_press) > button_debounce) {
     last_button_press = now;
-    Serial.println("Button A: Resetting altitude to zero");
+    Serial.println("Button A: Resetting max altitude to zero");
     
     if (bmp_available) {
-      baseline_altitude = bmp.readAltitude(baseline_pressure);
       max_altitude = 0.0;
-      Serial.printf("✓ Altitude reset to 0m (baseline: %.2fm)\n", baseline_altitude);
+      Serial.printf("✓ Max altitude reset to 0m\n");
       needs_full_refresh = true;
     }
     
@@ -455,7 +454,7 @@ void setupWebServer() {
             <div class="temp">Temperature: <span id="temperature">--</span> °C</div>
             <div class="pressure">Pressure: <span id="pressure">--</span> hPa</div>
         </div>
-        <button onclick="resetAltitude()">Reset Altitude</button>
+        <button onclick="resetAltitude()">Reset Max Altitude</button>
         <button onclick="toggleDisplay()">Toggle Display</button>
         <button onclick="refreshData()">Refresh Data</button>
     </div>
@@ -516,7 +515,6 @@ void setupWebServer() {
 
   server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request){
     if (bmp_available) {
-      baseline_altitude = bmp.readAltitude(baseline_pressure);
       max_altitude = 0.0;
       needs_full_refresh = true;
     }
