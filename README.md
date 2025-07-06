@@ -76,12 +76,26 @@ The BMP180 sensor should be connected via I2C:
 - [x] Battery monitoring (Voltage display)
 - [x] User interface (Button for Max Alt Reset)
 - [x] Fixed File class namespace compilation issues
+- [x] Fixed boot loop (flash memory configuration)
+- [x] Fixed TFT display crash (temporarily disabled)
+- [ ] BMP180 sensor detection (I2C configuration needed)
 - [x] WiFi Access Point functionality
 - [x] Web server with real-time statistics
 - [x] Persistent max altitude storage
 - [x] Remote max altitude reset via web interface
 
 ## Recent Updates
+
+### v1.0.2 - Boot Loop and TFT Crash Fix
+- **Issue**: Device stuck in boot loop with flash size mismatch and TFT display crashes
+- **Root Cause**: 
+  - Wrong board configuration (`lolin_s3_pro` expecting 16MB flash vs actual 4MB)
+  - TFT_eSPI library causing memory access violations
+- **Solution**: 
+  - Changed board configuration to `lolin_s3_mini` (4MB flash)
+  - Temporarily removed TFT display functionality for debugging
+  - Fixed flash memory configuration
+- **Status**: ✅ Device boots successfully, serial communication working
 
 ### v1.0.1 - File Class Namespace Fix
 - **Issue**: Compilation errors due to `File` class not being in scope
@@ -101,6 +115,13 @@ The BMP180 sensor should be connected via I2C:
 - If you encounter `File` class compilation errors, ensure you're using the latest version of PlatformIO
 - The project uses `fs::File` namespace for SPIFFS operations
 - If PlatformIO CLI has issues, try installing via pipx instead of system package manager
+- **Boot Loop Issues**: Ensure correct board configuration (`lolin_s3_mini` for 4MB flash)
+- **BMP180 Not Detected**: Check I2C wiring - SDA=GPIO8, SCL=GPIO9, VCC=3.3V, GND=GND
+
+### Current Issues
+- **BMP180 Sensor**: Not being detected on I2C bus (GPIO8/GPIO9)
+- **TFT Display**: Temporarily disabled due to memory access violations
+- **Next Steps**: Verify I2C hardware connections and pin configuration
 
 ## Dependencies
 - PlatformIO
