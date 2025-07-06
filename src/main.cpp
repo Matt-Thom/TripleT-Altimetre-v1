@@ -87,7 +87,8 @@ void setup() {
   Serial.println("========================================");
   Serial.println("    LOLIN S3 Mini Pro Altimeter v2.1");
   Serial.println("========================================");
-  Serial.println("Pure Altimeter - No Test Mode");
+  Serial.println("*** PURE ALTIMETER MODE - NO TESTS ***");
+  Serial.println("*** THIS IS THE MAIN ALTIMETER APP ***");
   Serial.println("Board: LOLIN S3 Mini Pro");
   Serial.println("Display: 0.85\" 128x128 TFT (ST7789)");
   Serial.println("Sensor: BMP180 Pressure/Temperature");
