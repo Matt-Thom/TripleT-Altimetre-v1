@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <TFT_eSPI.h>
+// #include <TFT_eSPI.h>  // Temporarily disabled due to pin configuration issues
 #include <Adafruit_BMP085.h>
 #include "FS.h"
 #include "SPIFFS.h"
@@ -15,11 +15,26 @@
 #define BUTTON_3_PIN 48
 #define BATTERY_PIN 1
 
+// I2C pins for LOLIN S3 Mini Pro - BMP180 sensor
+#define I2C_SDA_PIN 12  // SDA for BMP180
+#define I2C_SCL_PIN 11  // SCL for BMP180
+
 // IMU I2C address (QMI8658C)
 #define QMI8658_I2C_ADDR 0x6B
 
+// RGB LED Colors
+#define LED_OFF        0x000000
+#define LED_RED        0xFF0000
+#define LED_GREEN      0x00FF00
+#define LED_BLUE       0x0000FF
+#define LED_YELLOW     0xFFFF00
+#define LED_PURPLE     0xFF00FF
+#define LED_CYAN       0x00FFFF
+#define LED_WHITE      0xFFFFFF
+#define LED_ORANGE     0xFF8000
+
 // Display and sensor objects
-TFT_eSPI tft = TFT_eSPI();
+// TFT_eSPI tft = TFT_eSPI();  // Temporarily disabled
 Adafruit_BMP085 bmp180;
 
 // Global variables
@@ -48,12 +63,10 @@ const char* dataLogFile = "/altimeter_data.csv";
 unsigned long lastLogTime = 0;
 const unsigned long logInterval = 5000; // Log every 5 seconds
 
-// Display colors
-#define COLOR_BG       0x0000    // Black
-#define COLOR_TEXT     0xFFFF    // White
-#define COLOR_ACCENT   0x07E0    // Green
-#define COLOR_WARNING  0xF800    // Red
-#define COLOR_INFO     0x001F    // Blue
+// Status LED management
+unsigned long lastStatusUpdate = 0;
+const unsigned long statusUpdateInterval = 1000; // Update status LED every second
+int statusLEDState = 0;
 
 // Function prototypes
 void initDisplay();
@@ -66,13 +79,15 @@ void readSensors();
 void updateDisplay();
 void handleButtons();
 void logData();
-void displayMainScreen();
-void displaySensorScreen();
-void displaySettingsScreen();
-void setRGBLED(uint8_t r, uint8_t g, uint8_t b);
+void displaySerialData();
+void setRGBLED(uint32_t color);
+void setRGBLEDRaw(uint8_t r, uint8_t g, uint8_t b);
+void updateStatusLED();
+void flashLED(uint32_t color, int duration);
 float readBatteryVoltage();
 void calculateOrientation();
 bool checkIMUConnection();
+void scanI2CDevices();
 
 void setup() {
     Serial.begin(115200);
@@ -80,35 +95,55 @@ void setup() {
     
     Serial.println("===== LOLIN S3 Mini Pro Altimeter v2.0 =====");
     Serial.println("Board: LOLIN S3 Mini Pro");
-    Serial.println("Display: 0.85\" 128x128 TFT (GC9A01)");
+    Serial.println("Display: 0.85\" 128x128 TFT (DISABLED - Pin Config Issue)");
     Serial.println("IMU: QMI8658C 6D MEMS");
     Serial.println("Flash: 4MB, PSRAM: 2MB");
+    Serial.println("I2C: SDA=GPIO12, SCL=GPIO11 (BMP180)");
+    Serial.println("RGB LED: Data=GPIO8, Power=GPIO7");
     Serial.println("==========================================");
     
     // Initialize hardware components
     initDisplay();
     initButtons();
     initRGBLED();
+    
+    // Show initialization status
+    setRGBLED(LED_YELLOW); // Yellow = initializing
+    
     initSPIFFS();
     initSensors();
     initIMU();
     
     Serial.println("=== Altimeter Ready ===");
     Serial.println("Button 1 (GPIO0): Reset max altitude");
-    Serial.println("Button 2 (GPIO47): Change screen");
+    Serial.println("Button 2 (GPIO47): Change display mode");
     Serial.println("Button 3 (GPIO48): Toggle logging");
+    Serial.println("Using Serial Interface (TFT temporarily disabled)");
+    Serial.println("====================================");
+    Serial.println("LED Status Colors:");
+    Serial.println("- Green: System ready, sensor working");
+    Serial.println("- Red: Sensor error");
+    Serial.println("- Blue: Button pressed");
+    Serial.println("- Yellow: Initializing");
+    Serial.println("- Purple: Logging data");
+    Serial.println("- Cyan: IMU active");
+    Serial.println("====================================");
     
-    // Set initial LED color (green = ready)
-    setRGBLED(0, 255, 0);
-    delay(500);
-    setRGBLED(0, 0, 0); // Turn off
+    // Set initial status LED
+    if (sensorInitialized) {
+        setRGBLED(LED_GREEN); // Green = ready with sensor
+    } else {
+        setRGBLED(LED_RED); // Red = sensor error
+    }
+    
+    delay(1000);
 }
 
 void loop() {
     static unsigned long lastSensorRead = 0;
     static unsigned long lastDisplayUpdate = 0;
     const unsigned long sensorInterval = 500;   // Read sensors every 500ms
-    const unsigned long displayInterval = 100;  // Update display every 100ms
+    const unsigned long displayInterval = 2000; // Update display every 2 seconds
     
     unsigned long currentTime = millis();
     
@@ -118,10 +153,16 @@ void loop() {
         lastSensorRead = currentTime;
     }
     
-    // Update display
+    // Update display (serial output)
     if (currentTime - lastDisplayUpdate >= displayInterval) {
         updateDisplay();
         lastDisplayUpdate = currentTime;
+    }
+    
+    // Update status LED
+    if (currentTime - lastStatusUpdate >= statusUpdateInterval) {
+        updateStatusLED();
+        lastStatusUpdate = currentTime;
     }
     
     // Handle button presses
@@ -129,6 +170,7 @@ void loop() {
     
     // Log data periodically
     if (currentTime - lastLogTime >= logInterval) {
+        flashLED(LED_PURPLE, 200); // Purple flash when logging
         logData();
         lastLogTime = currentTime;
     }
@@ -137,41 +179,64 @@ void loop() {
 }
 
 void initDisplay() {
-    Serial.println("Initializing TFT display...");
-    
-    // Initialize display
-    tft.init();
-    tft.setRotation(0);
-    tft.fillScreen(COLOR_BG);
-    tft.setTextColor(COLOR_TEXT, COLOR_BG);
-    tft.setTextSize(1);
-    
-    // Show startup screen
-    tft.setCursor(10, 10);
-    tft.println("LOLIN S3 Mini Pro");
-    tft.setCursor(10, 30);
-    tft.println("Altimeter v2.0");
-    tft.setCursor(10, 50);
-    tft.println("Initializing...");
-    
-    displayInitialized = true;
-    Serial.println("TFT display initialized");
+    Serial.println("TFT display initialization skipped (pin configuration issue)");
+    displayInitialized = false; // Keep false to use serial interface
+    Serial.println("Using serial interface for data display");
 }
 
 void initSensors() {
     Serial.println("Initializing BMP180 sensor...");
     
-    // Initialize I2C
-    Wire.begin();
+    // Initialize I2C with specific pins for BMP180
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+    Serial.print("I2C initialized with SDA=GPIO");
+    Serial.print(I2C_SDA_PIN);
+    Serial.print(", SCL=GPIO");
+    Serial.print(I2C_SCL_PIN);
+    Serial.println(" (for BMP180)");
+    
+    // Scan for I2C devices
+    scanI2CDevices();
     
     // Try to initialize BMP180
     if (bmp180.begin()) {
         sensorInitialized = true;
-        Serial.println("BMP180 sensor initialized successfully");
+        Serial.println("BMP180 sensor initialized successfully!");
+        flashLED(LED_GREEN, 500); // Green flash for success
     } else {
-        Serial.println("BMP180 sensor not found - continuing without pressure sensor");
+        Serial.println("BMP180 sensor not found - check I2C connections");
+        Serial.println("Expected connections: SDA→GPIO12, SCL→GPIO11, VCC→3.3V, GND→GND");
         sensorInitialized = false;
+        flashLED(LED_RED, 500); // Red flash for error
     }
+}
+
+void scanI2CDevices() {
+    Serial.println("Scanning I2C bus for devices...");
+    byte error, address;
+    int nDevices = 0;
+    
+    for (address = 1; address < 127; address++) {
+        Wire.beginTransmission(address);
+        error = Wire.endTransmission();
+        
+        if (error == 0) {
+            Serial.print("I2C device found at address 0x");
+            if (address < 16) Serial.print("0");
+            Serial.print(address, HEX);
+            Serial.println();
+            nDevices++;
+        }
+    }
+    
+    if (nDevices == 0) {
+        Serial.println("No I2C devices found");
+    } else {
+        Serial.print("Found ");
+        Serial.print(nDevices);
+        Serial.println(" I2C device(s)");
+    }
+    Serial.println("I2C scan complete");
 }
 
 void initIMU() {
@@ -180,13 +245,15 @@ void initIMU() {
     // Check if IMU is connected
     if (checkIMUConnection()) {
         imuInitialized = true;
-        Serial.println("QMI8658C IMU detected");
+        Serial.println("QMI8658C IMU detected on I2C bus");
+        flashLED(LED_CYAN, 500); // Cyan flash for IMU detected
         
         // Basic IMU initialization would go here
         // For now, we'll just mark it as initialized
         
     } else {
-        Serial.println("QMI8658C IMU not found - continuing without IMU");
+        Serial.println("QMI8658C IMU not found on I2C bus");
+        Serial.println("This is expected if IMU is not connected or uses different address");
         imuInitialized = false;
     }
 }
@@ -213,23 +280,35 @@ void initSPIFFS() {
             file.close();
             Serial.println("Created new log file with headers");
         }
+    } else {
+        Serial.println("Log file already exists");
     }
     
-    Serial.println("SPIFFS initialized");
+    Serial.println("SPIFFS initialized successfully");
 }
 
 void initButtons() {
     pinMode(BUTTON_1_PIN, INPUT_PULLUP);
     pinMode(BUTTON_2_PIN, INPUT_PULLUP);
     pinMode(BUTTON_3_PIN, INPUT_PULLUP);
-    Serial.println("Buttons initialized");
+    Serial.println("Buttons initialized (GPIO0, GPIO47, GPIO48)");
 }
 
 void initRGBLED() {
     pinMode(RGB_LED_POWER_PIN, OUTPUT);
     pinMode(RGB_LED_DATA_PIN, OUTPUT);
     digitalWrite(RGB_LED_POWER_PIN, HIGH); // Enable LED power
-    Serial.println("RGB LED initialized");
+    Serial.println("RGB LED initialized (Data: GPIO8, Power: GPIO7)");
+    
+    // Test LED colors
+    Serial.println("Testing RGB LED colors...");
+    setRGBLED(LED_RED);
+    delay(200);
+    setRGBLED(LED_GREEN);
+    delay(200);
+    setRGBLED(LED_BLUE);
+    delay(200);
+    setRGBLED(LED_OFF);
 }
 
 void readSensors() {
@@ -270,140 +349,90 @@ void calculateOrientation() {
 }
 
 void updateDisplay() {
-    if (!displayInitialized) return;
-    
-    switch (currentScreen) {
-        case 0:
-            displayMainScreen();
-            break;
-        case 1:
-            displaySensorScreen();
-            break;
-        case 2:
-            displaySettingsScreen();
-            break;
-    }
+    // Use serial interface since TFT is disabled
+    displaySerialData();
 }
 
-void displayMainScreen() {
-    tft.fillScreen(COLOR_BG);
-    tft.setTextColor(COLOR_TEXT, COLOR_BG);
+void displaySerialData() {
+    Serial.println("\n=== LOLIN S3 Mini Pro Altimeter Data ===");
     
-    // Title
-    tft.setTextSize(2);
-    tft.setCursor(10, 5);
-    tft.setTextColor(COLOR_ACCENT, COLOR_BG);
-    tft.println("ALTIMETER");
-    
-    // Current altitude
-    tft.setTextSize(1);
-    tft.setTextColor(COLOR_TEXT, COLOR_BG);
-    tft.setCursor(5, 30);
-    tft.println("Current Alt:");
-    tft.setTextSize(2);
-    tft.setCursor(5, 45);
+    // Current status
+    Serial.print("Current Altitude: ");
     if (sensorInitialized) {
-        tft.printf("%.1f m", currentAltitude);
+        Serial.print(currentAltitude, 1);
+        Serial.println(" m");
     } else {
-        tft.setTextColor(COLOR_WARNING, COLOR_BG);
-        tft.println("NO SENSOR");
+        Serial.println("NO SENSOR");
     }
     
-    // Max altitude
-    tft.setTextSize(1);
-    tft.setTextColor(COLOR_TEXT, COLOR_BG);
-    tft.setCursor(5, 70);
-    tft.println("Max Alt:");
-    tft.setTextSize(2);
-    tft.setCursor(5, 85);
-    tft.setTextColor(COLOR_ACCENT, COLOR_BG);
-    tft.printf("%.1f m", maxAltitude);
+    Serial.print("Maximum Altitude: ");
+    Serial.print(maxAltitude, 1);
+    Serial.println(" m");
     
-    // Battery and status
-    tft.setTextSize(1);
-    tft.setTextColor(COLOR_INFO, COLOR_BG);
-    tft.setCursor(5, 110);
-    tft.printf("Bat: %.2fV", batteryVoltage);
-    
-    // Screen indicator
-    tft.setCursor(100, 110);
-    tft.printf("1/%d", maxScreens);
-}
-
-void displaySensorScreen() {
-    tft.fillScreen(COLOR_BG);
-    tft.setTextColor(COLOR_TEXT, COLOR_BG);
-    
-    // Title
-    tft.setTextSize(1);
-    tft.setCursor(10, 5);
-    tft.setTextColor(COLOR_ACCENT, COLOR_BG);
-    tft.println("SENSOR DATA");
-    
-    // Temperature and pressure
-    tft.setTextColor(COLOR_TEXT, COLOR_BG);
-    tft.setCursor(5, 25);
     if (sensorInitialized) {
-        tft.printf("Temp: %.1f C", temperature);
-        tft.setCursor(5, 40);
-        tft.printf("Pres: %.1f hPa", pressure / 100.0);
-    } else {
-        tft.println("BMP180: NOT FOUND");
+        Serial.print("Temperature: ");
+        Serial.print(temperature, 1);
+        Serial.println(" °C");
+        
+        Serial.print("Pressure: ");
+        Serial.print(pressure / 100.0, 1);
+        Serial.println(" hPa");
     }
     
     // IMU data
-    tft.setCursor(5, 60);
     if (imuInitialized) {
-        tft.println("IMU: ACTIVE");
-        tft.setCursor(5, 75);
-        tft.printf("Pitch: %.1f", pitch);
-        tft.setCursor(5, 90);
-        tft.printf("Roll:  %.1f", roll);
+        Serial.println("IMU: ACTIVE");
+        Serial.print("Pitch: ");
+        Serial.print(pitch, 1);
+        Serial.print("°, Roll: ");
+        Serial.print(roll, 1);
+        Serial.println("°");
     } else {
-        tft.println("IMU: NOT FOUND");
+        Serial.println("IMU: NOT DETECTED");
     }
     
-    // Screen indicator
-    tft.setCursor(100, 110);
-    tft.printf("2/%d", maxScreens);
+    // System info
+    Serial.print("Battery Voltage: ");
+    Serial.print(batteryVoltage, 2);
+    Serial.println(" V");
+    
+    Serial.print("Free Heap: ");
+    Serial.print(ESP.getFreeHeap());
+    Serial.println(" bytes");
+    
+    Serial.print("Uptime: ");
+    Serial.print(millis() / 1000);
+    Serial.println(" seconds");
+    
+    Serial.println("Press Button 1 (GPIO0) to reset max altitude");
+    Serial.println("==========================================");
 }
 
-void displaySettingsScreen() {
-    tft.fillScreen(COLOR_BG);
-    tft.setTextColor(COLOR_TEXT, COLOR_BG);
+void updateStatusLED() {
+    // Breathing effect for status LED
+    static int brightness = 0;
+    static int direction = 1;
     
-    // Title
-    tft.setTextSize(1);
-    tft.setCursor(10, 5);
-    tft.setTextColor(COLOR_ACCENT, COLOR_BG);
-    tft.println("SETTINGS");
+    brightness += direction * 5;
+    if (brightness >= 255) {
+        brightness = 255;
+        direction = -1;
+    } else if (brightness <= 0) {
+        brightness = 0;
+        direction = 1;
+    }
     
-    // WiFi status
-    tft.setTextColor(COLOR_TEXT, COLOR_BG);
-    tft.setCursor(5, 25);
-    tft.println("WiFi: OFF");
-    
-    // Logging status
-    tft.setCursor(5, 40);
-    tft.println("Logging: ON");
-    
-    // Memory usage
-    tft.setCursor(5, 55);
-    tft.printf("Free heap: %d", ESP.getFreeHeap());
-    
-    // Uptime
-    tft.setCursor(5, 70);
-    tft.printf("Uptime: %lu s", millis() / 1000);
-    
-    // Controls
-    tft.setCursor(5, 90);
-    tft.println("BTN1: Reset Max");
-    tft.setCursor(5, 100);
-    tft.println("BTN2: Next Screen");
-    
-    // Screen indicator
-    tft.setCursor(100, 110);
-    tft.printf("3/%d", maxScreens);
+    // Choose color based on system status
+    if (sensorInitialized && imuInitialized) {
+        // Both sensors working - cyan breathing
+        setRGBLEDRaw(0, brightness/4, brightness/4);
+    } else if (sensorInitialized) {
+        // Only BMP180 working - green breathing
+        setRGBLEDRaw(0, brightness/4, 0);
+    } else {
+        // No sensors - red breathing
+        setRGBLEDRaw(brightness/4, 0, 0);
+    }
 }
 
 void handleButtons() {
@@ -413,22 +442,23 @@ void handleButtons() {
     if (digitalRead(BUTTON_1_PIN) == LOW) {
         if (currentTime - lastButtonPressTime > debounceDelay) {
             maxAltitude = currentAltitude;
-            Serial.println("Max altitude reset");
-            setRGBLED(255, 0, 0); // Red flash
-            delay(100);
-            setRGBLED(0, 0, 0);
+            Serial.println("\n*** MAX ALTITUDE RESET ***");
+            Serial.print("Max altitude reset to: ");
+            Serial.print(maxAltitude, 1);
+            Serial.println(" m");
+            flashLED(LED_ORANGE, 300); // Orange flash for reset
             lastButtonPressTime = currentTime;
         }
     }
     
-    // Button 2: Change screen
+    // Button 2: Change display mode (placeholder)
     if (digitalRead(BUTTON_2_PIN) == LOW) {
         if (currentTime - lastButtonPressTime > debounceDelay) {
             currentScreen = (currentScreen + 1) % maxScreens;
-            Serial.printf("Screen changed to %d\n", currentScreen);
-            setRGBLED(0, 0, 255); // Blue flash
-            delay(100);
-            setRGBLED(0, 0, 0);
+            Serial.print("\n*** DISPLAY MODE CHANGED TO: ");
+            Serial.print(currentScreen);
+            Serial.println(" ***");
+            flashLED(LED_BLUE, 300); // Blue flash for mode change
             lastButtonPressTime = currentTime;
         }
     }
@@ -436,10 +466,8 @@ void handleButtons() {
     // Button 3: Toggle logging (placeholder)
     if (digitalRead(BUTTON_3_PIN) == LOW) {
         if (currentTime - lastButtonPressTime > debounceDelay) {
-            Serial.println("Logging toggle (not implemented)");
-            setRGBLED(0, 255, 0); // Green flash
-            delay(100);
-            setRGBLED(0, 0, 0);
+            Serial.println("\n*** LOGGING TOGGLE (placeholder) ***");
+            flashLED(LED_YELLOW, 300); // Yellow flash for logging toggle
             lastButtonPressTime = currentTime;
         }
     }
@@ -470,14 +498,24 @@ void logData() {
     Serial.println("Data logged: " + logEntry);
 }
 
-void setRGBLED(uint8_t r, uint8_t g, uint8_t b) {
-    // Simple RGB LED control (this is a placeholder - actual implementation depends on LED type)
-    // For now, just use the data pin for basic on/off
-    if (r > 0 || g > 0 || b > 0) {
-        digitalWrite(RGB_LED_DATA_PIN, HIGH);
-    } else {
-        digitalWrite(RGB_LED_DATA_PIN, LOW);
-    }
+void setRGBLED(uint32_t color) {
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+    setRGBLEDRaw(r, g, b);
+}
+
+void setRGBLEDRaw(uint8_t r, uint8_t g, uint8_t b) {
+    // Simple RGB LED control using PWM
+    // This assumes a common cathode RGB LED
+    analogWrite(RGB_LED_DATA_PIN, r > 0 ? 255 : 0); // Simple on/off for now
+    // For proper RGB control, you'd need 3 separate pins or a smart LED like WS2812
+}
+
+void flashLED(uint32_t color, int duration) {
+    setRGBLED(color);
+    delay(duration);
+    setRGBLED(LED_OFF);
 }
 
 float readBatteryVoltage() {
