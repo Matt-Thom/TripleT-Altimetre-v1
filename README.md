@@ -10,7 +10,7 @@ A professional-grade altimeter project built on the LOLIN S3 Mini Pro developmen
 ✅ **Button Interface**: All 3 buttons working with visual feedback  
 ✅ **Data Logging**: CSV logging to SPIFFS with 5-second intervals  
 ✅ **Serial Interface**: Real-time data display via USB serial  
-⚠️ **TFT Display**: Temporarily disabled (pin configuration needs work)  
+✅ **TFT Display**: Fixed Guru Meditation Error, now properly configured with correct pin definitions  
 ⚠️ **IMU Sensor**: Framework ready, needs proper library implementation  
 
 ## Hardware Specifications
@@ -48,6 +48,15 @@ A professional-grade altimeter project built on the LOLIN S3 Mini Pro developmen
 - **Button 2**: GPIO47 (Change display mode)
 - **Button 3**: GPIO48 (Toggle logging)
 
+### TFT Display (ST7789)
+- **CS (Chip Select)**: GPIO35
+- **DC (Data/Command)**: GPIO36
+- **RST (Reset)**: GPIO34
+- **BL (Backlight)**: GPIO33
+- **MOSI**: GPIO38
+- **SCLK**: GPIO40
+- **MISO**: GPIO39
+
 ### Other Pins
 - **IR Sensor**: GPIO9
 - **Battery Monitor**: GPIO1
@@ -77,9 +86,10 @@ The RGB LED provides visual feedback for different system states:
 - **Serial Interface**: Real-time data display via USB
 - **Battery Monitoring**: Voltage level tracking
 - **Memory Management**: Efficient use of 4MB Flash + 2MB PSRAM
+- **TFT Display**: 0.85" 128x128 ST7789 display with proper pin configuration
 
 ### Planned Features 🚧
-- **TFT Display Interface**: Multi-screen graphical interface
+- **TFT Display Interface**: Multi-screen graphical interface implementation
 - **IMU Integration**: Motion detection and orientation sensing
 - **Wi-Fi Data Upload**: Remote data transmission
 - **Advanced Logging**: Multiple log files and data export
@@ -213,6 +223,12 @@ build_flags =
    - Reset board if no output
    - Try different USB port
 
+4. **TFT Display Issues**
+   - **Guru Meditation Error**: Ensure User_Setup.h is present in project root
+   - **Blank Screen**: Check backlight pin (GPIO33) configuration
+   - **No Display**: Verify SPI pins (MOSI=GPIO38, SCLK=GPIO40, CS=GPIO35)
+   - **Garbled Display**: Check DC pin (GPIO36) and RST pin (GPIO34)
+
 ### LED Status Troubleshooting
 - **No LED**: Check power pin (GPIO7) connection
 - **Wrong Colors**: Verify data pin (GPIO8) connection  
@@ -238,7 +254,7 @@ build_flags =
 - **WORKING**: Button interface with visual feedback
 - **WORKING**: Data logging to SPIFFS
 - **WORKING**: Serial interface with real-time data
-- **DISABLED**: TFT display (pin configuration issue)
+- **FIXED**: TFT display (Guru Meditation Error resolved with proper User_Setup.h)
 - **FRAMEWORK**: IMU sensor support ready
 
 ### v1.0 (Previous)
