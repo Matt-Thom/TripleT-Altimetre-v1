@@ -187,67 +187,81 @@ void AltimeterDisplay::drawAltitudeData() {
 void AltimeterDisplay::drawEnvironmentalData() {
     int y = DATA_AREA_Y + 5;
     
+    // Always show current and max altitude at top
+    drawText(5, y, "ALT:", COLOR_ALTITUDE);
+    drawNumber(30, y, current_altitude, 1, COLOR_ALTITUDE);
+    drawText(70, y, "MAX:", COLOR_MAX_ALT);
+    drawNumber(95, y, max_altitude, 1, COLOR_MAX_ALT);
+    y += 15;
+    
     // Temperature
     drawText(5, y, "TEMPERATURE", COLOR_TEMP);
-    y += 15;
+    y += 12;
     drawNumber(10, y, temperature, 2, COLOR_TEMP);
     drawText(80, y, "°C", COLOR_TEMP);
     
-    y += 20;
+    y += 15;
     
     // Temperature bar graph (-10 to 40°C range)
-    drawBarGraph(5, y, 118, 10, temperature, -10, 40, COLOR_TEMP);
+    drawBarGraph(5, y, 118, 8, temperature, -10, 40, COLOR_TEMP);
     
-    y += 20;
+    y += 15;
     
     // Pressure
     drawText(5, y, "PRESSURE", COLOR_PRESSURE);
-    y += 15;
+    y += 12;
     drawNumber(10, y, pressure/100.0, 1, COLOR_PRESSURE);
     drawText(80, y, "hPa", COLOR_PRESSURE);
     
-    y += 20;
+    y += 15;
     
     // Pressure bar graph (900 to 1100 hPa range)
-    drawBarGraph(5, y, 118, 10, pressure/100.0, 900, 1100, COLOR_PRESSURE);
+    drawBarGraph(5, y, 118, 8, pressure/100.0, 900, 1100, COLOR_PRESSURE);
 }
 
 void AltimeterDisplay::drawIMUData() {
     int y = DATA_AREA_Y + 5;
     
+    // Always show current and max altitude at top
+    drawText(5, y, "ALT:", COLOR_ALTITUDE);
+    drawNumber(30, y, current_altitude, 1, COLOR_ALTITUDE);
+    drawText(70, y, "MAX:", COLOR_MAX_ALT);
+    drawNumber(95, y, max_altitude, 1, COLOR_MAX_ALT);
+    y += 15;
+    
     if (imu_status) {
         // Acceleration data
         drawText(5, y, "ACCELERATION", COLOR_IMU);
-        y += 12;
+        y += 10;
         
         drawText(5, y, "X:", COLOR_IMU);
         drawNumber(20, y, accel_x, 2, COLOR_IMU);
         drawText(60, y, "g", COLOR_IMU);
-        y += 10;
+        y += 8;
         
         drawText(5, y, "Y:", COLOR_IMU);
         drawNumber(20, y, accel_y, 2, COLOR_IMU);
         drawText(60, y, "g", COLOR_IMU);
-        y += 10;
+        y += 8;
         
         drawText(5, y, "Z:", COLOR_IMU);
         drawNumber(20, y, accel_z, 2, COLOR_IMU);
         drawText(60, y, "g", COLOR_IMU);
-        y += 15;
+        y += 12;
         
         // Gyroscope data
         drawText(5, y, "GYROSCOPE", COLOR_IMU);
-        y += 12;
+        y += 10;
         
         drawText(5, y, "X:", COLOR_IMU);
         drawNumber(20, y, gyro_x, 1, COLOR_IMU);
         drawText(70, y, "°/s", COLOR_IMU);
-        y += 10;
+        y += 8;
         
         drawText(5, y, "Y:", COLOR_IMU);
         drawNumber(20, y, gyro_y, 1, COLOR_IMU);
         drawText(70, y, "°/s", COLOR_IMU);
-        y += 10;
+        y += 8;
         
         drawText(5, y, "Z:", COLOR_IMU);
         drawNumber(20, y, gyro_z, 1, COLOR_IMU);
@@ -255,11 +269,11 @@ void AltimeterDisplay::drawIMUData() {
         
     } else {
         drawText(5, y, "IMU NOT DETECTED", COLOR_STATUS_ERROR);
-        y += 20;
-        drawText(5, y, "Check connections", COLOR_TEXT);
         y += 15;
+        drawText(5, y, "Check connections", COLOR_TEXT);
+        y += 12;
         drawText(5, y, "SDA: GPIO12", COLOR_TEXT);
-        y += 10;
+        y += 8;
         drawText(5, y, "SCL: GPIO11", COLOR_TEXT);
     }
 }
