@@ -1,226 +1,226 @@
-# TripleT Altimeter v1
+# TripleT Altimeter v2.1
 
-A comprehensive altimeter system built on the LOLIN S3 Mini Pro ESP32-S3 development board with a 0.85" TFT display, BMP180 pressure sensor, and optional IMU.
-
-## Hardware Configuration
-
-### Board: LOLIN S3 Mini Pro
-- **MCU**: ESP32-S3 (240MHz, 320KB RAM, 4MB Flash)
-- **Display**: 0.85" 128x128 TFT (ST7789 driver)
-- **Sensors**: BMP180 pressure/temperature sensor
-- **Optional**: QMI8658C IMU (6-axis accelerometer/gyroscope)
-- **RGB LED**: WS2812B for status indication
-- **Buttons**: 3 tactile buttons for user interaction
-
-### Pin Configuration
-```
-TFT Display (SPI):
-- CS:   GPIO35
-- DC:   GPIO36  
-- RST:  GPIO34
-- BL:   GPIO33 (backlight)
-- MOSI: GPIO38
-- SCLK: GPIO40
-- MISO: GPIO39
-
-I2C Sensors:
-- SDA:  GPIO12
-- SCL:  GPIO11
-
-RGB LED:
-- DATA: GPIO8
-- POWER: GPIO7
-
-Buttons:
-- Button A: GPIO0  (Calibrate altitude)
-- Button B: GPIO47 (Change display mode)
-- Button C: GPIO48 (Force refresh)
-```
+A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microcontroller. This device provides accurate altitude measurements using barometric pressure sensing with a clean, focused display interface.
 
 ## Features
 
-### 🎯 **Altitude Measurement**
-- Real-time altitude calculation using BMP180 pressure sensor
-- Calibration feature to set current location as 0m reference
-- Maximum altitude tracking
-- Pressure and temperature readings
+### Hardware
+- **Board**: LOLIN S3 Mini Pro (ESP32-S3)
+- **Display**: 0.85" 128x128 TFT LCD (ST7789 driver)
+- **Sensor**: BMP180 barometric pressure/temperature sensor
+- **LED**: WS2812B RGB status indicator
+- **Buttons**: 3 tactile buttons for user interaction
+- **Connectivity**: WiFi access point with web interface
 
-### 📱 **Multi-Mode Display**
-- **Overview Mode**: All key data on one screen
-- **Altitude Detail**: Focused altitude information
-- **Environmental**: Temperature and pressure details
-- **IMU Mode**: Accelerometer and gyroscope data (if available)
+### Functionality
+- **Accurate Altitude Measurement**: Barometric pressure-based altitude calculation
+- **Maximum Altitude Tracking**: Automatically tracks and displays peak altitude
+- **Altitude Zeroing**: Button-activated calibration to set current location as reference
+- **Dual Display Modes**: Main overview and detailed altitude view
+- **Power Management**: Display on/off control for battery conservation
+- **WiFi Web Interface**: Remote monitoring and control via web browser
+- **Status Indicators**: RGB LED breathing effect showing system status
 
-### 🎨 **Visual Interface**
-- Custom 5x7 bitmap font for crisp, readable text
-- Color-coded data display
-- Status indicators for sensor health
-- Bar graphs for visual data representation
-- Breathing LED status indication
+## Pin Configuration
 
-### 🔧 **User Controls**
-- **Button A**: Calibrate altitude (set current location to 0m)
-- **Button B**: Cycle through display modes
-- **Button C**: Force display refresh
+### TFT Display (ST7789)
+- **CS**: GPIO35
+- **DC**: GPIO36  
+- **RST**: GPIO34
+- **BL**: GPIO33 (Backlight)
+- **MOSI**: GPIO38
+- **SCLK**: GPIO40
+- **MISO**: GPIO39
 
-### 📊 **Data Visualization**
-- Current altitude with decimal precision
-- Maximum altitude reached
-- Temperature in Celsius
-- Pressure in hPa
-- IMU data (acceleration and gyroscope)
-- Visual bar graphs for key metrics
+### BMP180 Sensor (I2C)
+- **SDA**: GPIO12
+- **SCL**: GPIO11
 
-## Software Architecture
+### User Interface
+- **Button A**: GPIO0 (Reset altitude to zero)
+- **Button B**: GPIO47 (Toggle display mode)
+- **Button C**: GPIO48 (Toggle display on/off)
+- **RGB LED**: GPIO8 (Data), GPIO7 (Power)
 
-### Core Components
-- **`main.cpp`**: Main application logic and sensor management
-- **`altimeter_display.cpp/.h`**: Display interface and rendering
-- **`simple_font.h`**: Bitmap font system for text rendering
-- **`tft_test.cpp/.h`**: Low-level TFT driver (ST7789)
-- **`imu_simulator.cpp/.h`**: IMU data simulation for testing
+## Display Modes
 
-### Display System
-- Custom bitmap font rendering for excellent readability
-- Efficient partial screen updates
-- Color-coded information display
-- Multi-mode interface with smooth transitions
+### Mode 1: Main Overview
+- Current altitude (large, green text)
+- Maximum altitude (red text) - **Always visible**
+- Temperature (yellow text)
+- Pressure (cyan text)
+- Sensor status indicator
 
-## Build and Upload
+### Mode 2: Detailed View
+- Current altitude (large, with 2 decimal places)
+- Maximum altitude (with 2 decimal places) - **Always visible**
+- Difference from maximum altitude (color-coded)
+- Sensor status indicator
 
-### Using PlatformIO
+## Controls
 
-1. **Build the altimeter**:
-   ```bash
-   pio run -e lolin_s3_mini_pro
-   ```
+### Button Functions
+- **Button A (GPIO0)**: Reset altitude to zero - Sets current location as reference point
+- **Button B (GPIO47)**: Toggle between display modes (Main/Detailed)
+- **Button C (GPIO48)**: Toggle display on/off for power saving
 
-2. **Upload to device**:
-   ```bash
-   pio run -e lolin_s3_mini_pro -t upload
-   ```
+### LED Status Indicators
+- **Green Breathing**: BMP180 sensor working properly
+- **Red Breathing**: Sensor error or connection issue
+- **Solid Colors**: Button press feedback (Orange/Blue/Green/Red)
 
-3. **Monitor serial output**:
-   ```bash
-   pio device monitor -e lolin_s3_mini_pro
-   ```
+## WiFi Web Interface
+
+The device creates a WiFi access point for remote monitoring:
+
+- **SSID**: `Altimeter-S3`
+- **Password**: `altimeter123`
+- **Web Interface**: Connect to WiFi and visit the device's IP address
+
+### Web Features
+- Real-time altitude, temperature, and pressure readings
+- Maximum altitude display
+- Remote altitude reset
+- Display toggle control
+- Sensor status monitoring
+
+## Build Instructions
+
+### Prerequisites
+- PlatformIO IDE or CLI
+- USB-C cable for programming
+
+### Building and Uploading
+
+```bash
+# Build the main altimeter application
+pio run -e lolin_s3_mini_pro
+
+# Upload to device
+pio run -e lolin_s3_mini_pro -t upload
+
+# Monitor serial output
+pio device monitor -b 115200
+```
 
 ### Alternative Builds
 
 - **TFT Test driver**: `pio run -e lolin_s3_mini_tft_test`
 
-## Usage
-
-### Initial Setup
-1. Power on the device
-2. Wait for sensor initialization (LED will indicate status)
-3. Calibrate altitude by pressing Button A at your reference location
-
-### Operation
-- **Green LED**: BMP180 sensor working
-- **Cyan LED**: Both BMP180 and IMU working  
-- **Red LED**: Sensor issues
-- **Breathing effect**: Normal operation
-
-### Calibration
-Press Button A to set the current location as 0m altitude reference. This recalibrates the pressure baseline for accurate relative altitude measurements.
-
-## Display Modes
-
-### 1. Overview Mode
-- Current altitude (large display)
-- Maximum altitude reached
-- Temperature and pressure (compact)
-- Altitude bar graph
-- IMU acceleration magnitude (if available)
-
-### 2. Altitude Detail Mode
-- Current altitude (extra large)
-- Maximum altitude
-- Difference from maximum
-- Detailed precision display
-
-### 3. Environmental Mode
-- Temperature with bar graph
-- Pressure with bar graph
-- Extended range displays
-
-### 4. IMU Mode
-- 3-axis acceleration data
-- 3-axis gyroscope data
-- Real-time sensor readings
-- Connection status
-
 ## Technical Specifications
 
-### Sensor Accuracy
-- **Altitude**: ±1m resolution (BMP180 dependent)
-- **Temperature**: ±0.5°C accuracy
-- **Pressure**: ±0.12 hPa accuracy
-- **Update Rate**: 5Hz sensor readings, 10Hz display updates
-
-### Display Performance
-- **Resolution**: 128x128 pixels
-- **Colors**: 16-bit RGB565
-- **Font**: Custom 5x7 bitmap font
-- **Refresh Rate**: Optimized partial updates
+### Altitude Calculation
+- **Method**: Barometric pressure differential
+- **Reference**: Standard sea level pressure (1013.25 hPa)
+- **Accuracy**: ±1-2 meters (typical)
+- **Resolution**: 0.1 meters
+- **Update Rate**: 5 Hz sensor readings, 2 Hz display updates
 
 ### Power Consumption
-- **Active**: ~80mA @ 3.3V
-- **Display**: ~30mA (backlight dependent)
-- **Sensors**: ~5mA combined
+- **Active**: ~150-200mA (display on, WiFi active)
+- **Display Off**: ~100-120mA (WiFi active)
+- **Sleep Mode**: Not implemented (continuous operation)
+
+### Environmental Ranges
+- **Operating Temperature**: -40°C to +85°C (BMP180 spec)
+- **Pressure Range**: 300-1100 hPa
+- **Altitude Range**: -500m to +9000m (calculated)
+
+## Serial Monitor Output
+
+The device provides detailed serial output for debugging:
+
+```
+========================================
+    LOLIN S3 Mini Pro Altimeter v2.1
+========================================
+Pure Altimeter - No Test Mode
+Board: LOLIN S3 Mini Pro
+Display: 0.85" 128x128 TFT (ST7789)
+Sensor: BMP180 Pressure/Temperature
+========================================
+✓ Buttons initialized
+✓ RGB LED initialized
+✓ TFT display initialized
+✓ BMP180 sensor initialized successfully
+✓ Current pressure: 1013.25 hPa
+✓ Using sea level baseline: 1013.25 hPa
+✓ WiFi and Web Server ready
+========================================
+🚀 ALTIMETER READY!
+========================================
+Controls:
+  Button A (GPIO0)  - Reset altitude to zero
+  Button B (GPIO47) - Toggle display mode
+  Button C (GPIO48) - Toggle display on/off
+========================================
+ALT: 0.0m (MAX: 0.0m) | TEMP: 23.5°C | PRESS: 1013.2 hPa
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Altitude shows incorrect values**:
-   - Press Button A to calibrate at current location
-   - Ensure BMP180 is properly connected
-   - Check I2C connections (SDA=GPIO12, SCL=GPIO11)
+1. **Display Not Working**
+   - Check TFT connections, especially power (3.3V) and ground
+   - Verify SPI pins: MOSI=38, SCLK=40, CS=35, DC=36, RST=34
+   - Check backlight pin (GPIO33)
 
-2. **Display not working**:
-   - Verify SPI connections
-   - Check TFT power and backlight
-   - Ensure correct pin configuration
+2. **Sensor Errors**
+   - Verify I2C connections: SDA=12, SCL=11
+   - Check BMP180 power supply (3.3V)
+   - Ensure proper ground connections
 
-3. **Sensor errors**:
-   - Check I2C wiring
-   - Verify 3.3V power supply
-   - Look for loose connections
+3. **Incorrect Altitude Readings**
+   - Use Button A to reset altitude to zero at known location
+   - Allow sensor to stabilize for 30 seconds after power-on
+   - Verify local atmospheric pressure if absolute accuracy needed
 
-### Serial Debug Output
-Connect to serial monitor at 115200 baud for detailed diagnostic information including:
-- Sensor initialization status
-- Real-time altitude readings
-- Button press events
-- Error messages
+4. **WiFi Connection Issues**
+   - Look for "Altimeter-S3" network
+   - Use password "altimeter123"
+   - Check serial monitor for IP address
 
-## Development
+### Build Errors
+- Ensure all dependencies are installed via PlatformIO
+- Check that simple_font.h is present in src/ directory
+- Verify correct board selection (lolin_s3_mini)
 
-### Adding New Features
-The modular design allows easy extension:
-- Add new display modes in `altimeter_display.cpp`
-- Extend sensor support in `main_altimeter.cpp`
-- Modify font or graphics in `simple_font.h`
+## Project Structure
 
-### Testing
-- IMU simulator provides realistic data for testing
-- TFT test driver available for display debugging
-- Serial output provides comprehensive diagnostics
+```
+TripleT-Altimetre-v1/
+├── src/
+│   ├── main.cpp              # Main altimeter application
+│   ├── main_tft_test.cpp     # TFT test application
+│   ├── tft_test.cpp          # Custom TFT driver
+│   ├── tft_test.h            # TFT driver header
+│   └── simple_font.h         # Bitmap font for display
+├── include/
+├── lib/
+├── platformio.ini            # Build configuration
+├── User_Setup.h              # TFT_eSPI configuration
+└── README.md                 # This file
+```
+
+## Version History
+
+- **v2.1**: Simplified altimeter with focus on sensor data display
+  - Removed all test functionality from main application
+  - Clean, dedicated altimeter interface
+  - Maximum altitude always visible on display
+  - Improved power management with display control
+  - Enhanced web interface for remote monitoring
+
+- **v2.0**: Complete altimeter with multi-mode display
+- **v1.0**: Initial TFT display and sensor integration
 
 ## License
 
 This project is open source. Feel free to modify and distribute according to your needs.
 
-## Version History
+## Support
 
-- **v2.1**: Complete altimeter with improved display and calibration
-- **v2.0**: TFT display integration and basic altimeter functions
-- **v1.0**: Initial BMP180 sensor integration
-
----
-
-**Status**: ✅ **FULLY FUNCTIONAL** - Ready for field testing and use
+For issues or questions, check the serial monitor output for diagnostic information. The device provides detailed status messages and error reporting to help with troubleshooting.
 
 
