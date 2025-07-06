@@ -427,7 +427,7 @@ void setupWebServer() {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>LOLIN S3 Altimeter</title>
+    <title>TripleT Altimeter v1</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }
@@ -446,7 +446,7 @@ void setupWebServer() {
 </head>
 <body>
     <div class="container">
-        <h1>🏔️ LOLIN S3 Altimeter</h1>
+        <h1>🏔️ TripleT Altimeter v1</h1>
         <div id="status" class="status"></div>
         <div class="data">
             <div class="altitude">Current Altitude: <span id="altitude">--</span> m</div>
