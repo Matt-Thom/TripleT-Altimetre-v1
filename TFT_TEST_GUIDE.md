@@ -6,12 +6,14 @@ This guide explains how to use the custom TFT test driver created from the worki
 
 ## Problem Solved
 
-The original issue was a **Guru Meditation Error** caused by missing or incorrect TFT display pin configuration. The custom test driver:
+The original issue was a **Guru Meditation Error** caused by missing or incorrect TFT display pin configuration. The solution provides:
 
-1. **Bypasses TFT_eSPI library** - Uses direct SPI communication
-2. **Implements proven CircuitPython logic** - Based on working driver code
-3. **Provides comprehensive testing** - Multiple test modes to verify functionality
-4. **Offers detailed debugging** - Serial output for troubleshooting
+1. **Fixed TFT_eSPI configuration** - Recreated `User_Setup.h` with correct pins
+2. **Custom test driver option** - Bypasses TFT_eSPI library with direct SPI communication
+3. **Proven CircuitPython logic** - Based on working driver code
+4. **Comprehensive testing** - Multiple test modes to verify functionality
+5. **Detailed debugging** - Serial output for troubleshooting
+6. **Build configuration separation** - Prevents conflicts between main and test versions
 
 ## Files Created
 
@@ -68,10 +70,16 @@ The test driver uses the following pin assignments (verified from CircuitPython)
 ### 1. Build and Upload Test Version
 
 ```bash
-# Build the test version
+# Build the regular version (with TFT_eSPI fix)
+pio run
+
+# Upload regular version
+pio run --target upload
+
+# OR build the custom test driver version
 pio run -e lolin_s3_mini_pro_tft_test -c platformio_tft_test.ini
 
-# Upload to device
+# Upload test version
 pio run -e lolin_s3_mini_pro_tft_test -c platformio_tft_test.ini --target upload
 
 # Monitor serial output
@@ -154,6 +162,11 @@ Button C (GPIO48): Run all tests
    - Verify button connections
    - Check serial output for errors
    - Ensure proper ground connections
+
+4. **Build Errors**
+   - **Multiple definition errors**: Use correct platformio.ini configuration
+   - **Missing files**: Ensure all test files are in src/ directory
+   - **Library conflicts**: Check that build_src_filter excludes conflicting files
 
 ### Debug Information
 
