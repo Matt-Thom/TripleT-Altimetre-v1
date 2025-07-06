@@ -77,10 +77,10 @@ pio run
 pio run --target upload
 
 # OR build the custom test driver version
-pio run -e lolin_s3_mini_pro_tft_test -c platformio_tft_test.ini
+pio run -e lolin_s3_mini_tft_test
 
 # Upload test version
-pio run -e lolin_s3_mini_pro_tft_test -c platformio_tft_test.ini --target upload
+pio run -e lolin_s3_mini_tft_test --target upload
 
 # Monitor serial output
 pio device monitor -b 115200
