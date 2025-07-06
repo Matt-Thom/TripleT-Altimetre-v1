@@ -57,12 +57,28 @@ The BMP180 sensor should be connected via I2C:
 - [x] Data logging (to SPIFFS)
 - [x] Battery monitoring (Voltage display)
 - [x] User interface (Button for Max Alt Reset)
+- [x] Fixed File class namespace compilation issues
+
+## Recent Updates
+
+### v1.0.1 - File Class Namespace Fix
+- **Issue**: Compilation errors due to `File` class not being in scope
+- **Root Cause**: ESP32 Arduino framework requires `fs::File` namespace for file operations
+- **Solution**: Updated all `File` declarations to use `fs::File` in:
+  - `initSPIFFS()` function for creating CSV headers
+  - `logData()` function for appending sensor data
+- **Status**: ✅ Successfully compiles and builds
 
 ## Build Instructions
-1. Install PlatformIO
+1. Install PlatformIO (recommended via pipx: `pipx install platformio`)
 2. Clone this repository
 3. Open the project in PlatformIO
 4. Build and upload to your ESP32-S3 board
+
+### Troubleshooting
+- If you encounter `File` class compilation errors, ensure you're using the latest version of PlatformIO
+- The project uses `fs::File` namespace for SPIFFS operations
+- If PlatformIO CLI has issues, try installing via pipx instead of system package manager
 
 ## Dependencies
 - PlatformIO
