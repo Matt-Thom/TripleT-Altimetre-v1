@@ -13,11 +13,12 @@ It will store the largest altitude recorded until reset.
 ## Software Components
 
 ### Libraries
-- **BMP180 Library**: `enjoyneering/BMP180@^1.0.0`
-  - Comprehensive library for Bosch BMP180 barometric pressure & temperature sensor
+- **BMP180 Library**: `adafruit/Adafruit BMP085 Library@^1.2.4`
+  - Powerful but easy to use BMP085/BMP180 Arduino library by Adafruit
   - Supports I2C communication
-  - Features: Temperature reading, pressure reading, altitude calculation, sea level pressure calculation
+  - Features: Temperature reading, pressure reading, altitude calculation, sea level pressure calculation  
   - Compatible with ESP32 and Arduino frameworks
+  - Requires Adafruit BusIO library for I2C abstraction
 
 ### Features
 - Temperature measurement in Celsius
@@ -67,7 +68,8 @@ The BMP180 sensor should be connected via I2C:
 - PlatformIO
 - ESP32 Arduino Framework
 - Wire library (I2C communication)
-- BMP180 library by enjoyneering
+- Adafruit BMP085 library (for BMP180 sensor)
+- Adafruit BusIO library (for I2C abstraction)
 - TFT_eSPI library by Bodmer (for display)
 - SPIFFS (for data logging)
 

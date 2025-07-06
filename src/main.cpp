@@ -1,12 +1,12 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <BMP180.h>
+#include <Adafruit_BMP085.h>
 #include <TFT_eSPI.h> // Include TFT_eSPI library
 #include <SPI.h>
 #include "FS.h" // For SPIFFS
 #include "SPIFFS.h" // For SPIFFS
 
-BMP180 bmp180;
+Adafruit_BMP085 bmp180;
 float maxAltitude = 0.0; // Variable to store maximum altitude
 
 TFT_eSPI tft = TFT_eSPI(); // Initialize TFT_eSPI object
@@ -39,7 +39,7 @@ void initSPIFFS() {
   // Check if datalog file exists, if not, create it with headers
   if (!SPIFFS.exists(dataLogFile)) {
     Serial.println("Creating datalog.csv file...");
-    File file = SPIFFS.open(dataLogFile, FILE_WRITE);
+    fs::File file = SPIFFS.open(dataLogFile, FILE_WRITE);
     if (!file) {
       Serial.println("Failed to create file");
       tft.println("Log File Error");
@@ -55,7 +55,7 @@ void initSPIFFS() {
 
 // Function to log data to SPIFFS
 void logData(float temp, float pres, float alt) {
-  File file = SPIFFS.open(dataLogFile, FILE_APPEND);
+  fs::File file = SPIFFS.open(dataLogFile, FILE_APPEND);
   if (!file) {
     Serial.println("Failed to open file for appending");
     tft.setCursor(0, tft.height() - 8); // Position at bottom
