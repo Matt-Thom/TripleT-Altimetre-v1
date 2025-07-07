@@ -7,6 +7,7 @@
 #include <ESPAsyncWebServer.h>
 #include "tft_test.h"
 #include "simple_font.h"
+#include "imu_simulator.h"
 
 // --- PIN DEFINITIONS ---
 #define BUTTON_A_PIN 0
@@ -24,6 +25,7 @@ const char* wifi_hostname = "altimeter";
 // --- GLOBAL OBJECTS ---
 Adafruit_NeoPixel pixels(1, RGB_DATA, NEO_GRB + NEO_KHZ800);
 Adafruit_BMP085 bmp;
+IMUSimulator imu;
 TFTTest tft;
 AsyncWebServer server(80);
 
@@ -34,6 +36,12 @@ float baseline_pressure = 101325.0;  // Sea level pressure in Pascals
 float baseline_altitude = 0.0;       // Baseline altitude offset for zeroing
 float temperature = 0.0;
 float pressure = 0.0;
+
+// --- ACCELERATION STATE ---
+float current_acceleration = 0.0;
+float max_acceleration = 0.0;
+char max_acceleration_axis = 'Z';  // Track which axis had the max acceleration
+float accel_x = 0.0, accel_y = 0.0, accel_z = 0.0;
 
 // --- DISPLAY STATE ---
 bool display_enabled = true;
@@ -46,6 +54,8 @@ bool needs_full_refresh = true;
 #define COLOR_TEXT 0xFFFF
 #define COLOR_ALTITUDE 0x07E0
 #define COLOR_MAX_ALT 0xF800
+#define COLOR_ACCEL 0xF81F
+#define COLOR_MAX_ACCEL 0xFC00
 #define COLOR_TEMP 0xFFE0
 #define COLOR_PRESSURE 0x07FF
 #define COLOR_STATUS_OK 0x07E0
@@ -64,6 +74,7 @@ unsigned long last_display_update = 0;
 
 // --- STATUS ---
 bool bmp_available = false;
+bool imu_available = false;
 bool system_ready = false;
 
 // --- FUNCTION PROTOTYPES ---
@@ -92,6 +103,7 @@ void setup() {
   Serial.println("Board: LOLIN S3 Mini Pro");
   Serial.println("Display: 0.85\" 128x128 TFT (ST7789)");
   Serial.println("Sensor: BMP180 Pressure/Temperature");
+  Serial.println("IMU: Simulated 6-DOF IMU");
   Serial.println("========================================");
 
   // Initialize buttons
@@ -135,21 +147,34 @@ void setup() {
     
     Serial.printf("✓ Current pressure: %.2f hPa\n", current_pressure_hpa);
     Serial.printf("✓ Using sea level baseline: %.2f hPa\n", baseline_pressure / 100.0);
-    
-    pixels.setPixelColor(0, pixels.Color(0, 255, 0)); // Green - BMP OK
-    pixels.show();
   } else {
     Serial.println("✗ BMP180 sensor initialization failed!");
     Serial.println("  Check connections: SDA→GPIO12, SCL→GPIO11");
-    pixels.setPixelColor(0, pixels.Color(255, 0, 0)); // Red - BMP failed
-    pixels.show();
-    
+  }
+
+  // Initialize IMU simulator
+  Serial.println("Initializing IMU simulator...");
+  imu_available = imu.begin();
+  if (imu_available) {
+    Serial.println("✓ IMU simulator initialized successfully");
+  } else {
+    Serial.println("✗ IMU simulator initialization failed!");
+  }
+
+  // Set LED color based on sensor status
+  if (bmp_available && imu_available) {
+    pixels.setPixelColor(0, pixels.Color(0, 255, 0)); // Green - both OK
+  } else if (bmp_available || imu_available) {
+    pixels.setPixelColor(0, pixels.Color(255, 255, 0)); // Yellow - partial
+  } else {
+    pixels.setPixelColor(0, pixels.Color(255, 0, 0)); // Red - both failed
     tft.fillScreen(COLOR_BACKGROUND);
     drawText(10, 40, "SENSOR ERROR", COLOR_STATUS_ERROR);
-    drawText(10, 60, "CHECK BMP180", COLOR_STATUS_ERROR);
+    drawText(10, 60, "CHECK SENSORS", COLOR_STATUS_ERROR);
     drawText(10, 80, "CONNECTIONS", COLOR_STATUS_ERROR);
     delay(3000);
   }
+  pixels.show();
 
   // Initialize WiFi and Web Server
   Serial.println("Initializing WiFi and Web Server...");
@@ -165,7 +190,7 @@ void setup() {
   Serial.println("🚀 ALTIMETER READY!");
   Serial.println("========================================");
   Serial.println("Controls:");
-  Serial.println("  Button A (GPIO0)  - Reset max altitude to zero");
+  Serial.println("  Button A (GPIO0)  - Reset max altitude & acceleration to zero");
   Serial.println("  Button B (GPIO47) - Toggle display mode");
   Serial.println("  Button C (GPIO48) - Toggle display on/off");
   Serial.println("========================================");
@@ -201,17 +226,21 @@ void loop() {
 void handleButtons() {
   unsigned long now = millis();
   
-  // Button A - Reset max altitude only
+  // Button A - Reset max altitude and acceleration
   bool button_a_current = (digitalRead(BUTTON_A_PIN) == LOW);
   if (button_a_current && !button_a_pressed && (now - last_button_press) > button_debounce) {
     last_button_press = now;
-    Serial.println("Button A: Resetting max altitude to zero");
+    Serial.println("Button A: Resetting max altitude and acceleration to zero");
     
     if (bmp_available) {
       max_altitude = 0.0;
       Serial.printf("✓ Max altitude reset to 0m\n");
-      needs_full_refresh = true;
     }
+    if (imu_available) {
+      max_acceleration = 0.0;
+      Serial.printf("✓ Max acceleration reset to 0g\n");
+    }
+    needs_full_refresh = true;
     
     // Flash orange
     pixels.setPixelColor(0, pixels.Color(255, 100, 0));
@@ -269,14 +298,50 @@ void updateSensors() {
     if (current_altitude > max_altitude) {
       max_altitude = current_altitude;
     }
+  }
+  
+  if (imu_available) {
+    imu.update();
+    accel_x = imu.getAccelX();
+    accel_y = imu.getAccelY();
+    accel_z = imu.getAccelZ();
     
-    // Serial output every 5 seconds
-    static unsigned long last_serial_output = 0;
-    if (millis() - last_serial_output >= 5000) {
-      Serial.printf("ALT: %.2fm (MAX: %.2fm) | TEMP: %.1f°C | PRESS: %.1f hPa\n", 
-                    current_altitude, max_altitude, temperature, pressure/100.0);
-      last_serial_output = millis();
+    // Calculate total acceleration magnitude for display
+    current_acceleration = sqrt(accel_x*accel_x + accel_y*accel_y + accel_z*accel_z);
+    
+    // Track maximum acceleration from any individual axis
+    // Use fabs() for proper floating-point absolute values
+    float abs_accel_x = fabs(accel_x);
+    float abs_accel_y = fabs(accel_y);
+    float abs_accel_z = fabs(accel_z);
+    
+    // Find the highest acceleration from any axis
+    float max_current_axis = abs_accel_x;
+    char current_max_axis = 'X';
+    
+    if (abs_accel_y > max_current_axis) {
+      max_current_axis = abs_accel_y;
+      current_max_axis = 'Y';
     }
+    
+    if (abs_accel_z > max_current_axis) {
+      max_current_axis = abs_accel_z;
+      current_max_axis = 'Z';
+    }
+    
+    // Update maximum if this reading is higher
+    if (max_current_axis > max_acceleration) {
+      max_acceleration = max_current_axis;
+      max_acceleration_axis = current_max_axis;
+    }
+  }
+  
+  // Serial output every 5 seconds
+  static unsigned long last_serial_output = 0;
+  if (millis() - last_serial_output >= 5000) {
+    Serial.printf("ALT: %.2fm (MAX: %.2fm) | ACC: %.2fg (MAX: %.2fg-%c) | TEMP: %.1f°C | PRESS: %.1f hPa\n", 
+                  current_altitude, max_altitude, current_acceleration, max_acceleration, max_acceleration_axis, temperature, pressure/100.0);
+    last_serial_output = millis();
   }
 }
 
@@ -298,28 +363,44 @@ void drawMainDisplay() {
   tft.fillRect(0, 0, 128, 20, COLOR_HEADER);
   drawText(25, 5, "ALTIMETER", COLOR_TEXT);
   
-  // Status indicator
-  uint16_t status_color = bmp_available ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-  tft.fillRect(5, 5, 8, 8, status_color);
+  // Status indicators
+  uint16_t bmp_color = bmp_available ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
+  uint16_t imu_color = imu_available ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
+  tft.fillRect(5, 5, 6, 6, bmp_color);
+  tft.fillRect(12, 5, 6, 6, imu_color);
   
   // Current altitude - large display
-  drawText(10, 30, "CURRENT", COLOR_ALTITUDE);
-  drawNumber(10, 45, current_altitude, 1, COLOR_ALTITUDE);
-  drawText(90, 45, "m", COLOR_ALTITUDE);
+  drawText(10, 25, "ALT", COLOR_ALTITUDE);
+  drawNumber(35, 25, current_altitude, 1, COLOR_ALTITUDE);
+  drawText(80, 25, "m", COLOR_ALTITUDE);
   
-  // Max altitude - always visible
-  drawText(10, 65, "MAXIMUM", COLOR_MAX_ALT);
-  drawNumber(10, 80, max_altitude, 1, COLOR_MAX_ALT);
-  drawText(90, 80, "m", COLOR_MAX_ALT);
+  // Max altitude
+  drawText(10, 40, "MAX", COLOR_MAX_ALT);
+  drawNumber(35, 40, max_altitude, 1, COLOR_MAX_ALT);
+  drawText(80, 40, "m", COLOR_MAX_ALT);
+  
+  // Current acceleration
+  drawText(10, 55, "ACC", COLOR_ACCEL);
+  drawNumber(35, 55, current_acceleration, 2, COLOR_ACCEL);
+  drawText(80, 55, "g", COLOR_ACCEL);
+  
+  // Max acceleration with axis indicator
+  drawText(10, 70, "MAX", COLOR_MAX_ACCEL);
+  drawNumber(35, 70, max_acceleration, 2, COLOR_MAX_ACCEL);
+  drawText(80, 70, "g", COLOR_MAX_ACCEL);
+  
+  // Show which axis had the max acceleration
+  char axis_text[2] = {max_acceleration_axis, '\0'};
+  drawText(95, 70, axis_text, COLOR_MAX_ACCEL);
   
   // Temperature and pressure
-  drawText(10, 100, "TEMP", COLOR_TEMP);
-  drawNumber(50, 100, temperature, 1, COLOR_TEMP);
-  drawText(90, 100, "C", COLOR_TEMP);
+  drawText(10, 90, "TEMP", COLOR_TEMP);
+  drawNumber(50, 90, temperature, 1, COLOR_TEMP);
+  drawText(90, 90, "C", COLOR_TEMP);
   
-  drawText(10, 115, "PRESS", COLOR_PRESSURE);
-  drawNumber(50, 115, pressure/100.0, 0, COLOR_PRESSURE);
-  drawText(90, 115, "hPa", COLOR_PRESSURE);
+  drawText(10, 105, "PRESS", COLOR_PRESSURE);
+  drawNumber(50, 105, pressure/100.0, 0, COLOR_PRESSURE);
+  drawText(90, 105, "hPa", COLOR_PRESSURE);
 }
 
 void drawDetailedDisplay() {
@@ -327,26 +408,36 @@ void drawDetailedDisplay() {
   tft.fillRect(0, 0, 128, 20, COLOR_HEADER);
   drawText(30, 5, "DETAILED", COLOR_TEXT);
   
-  // Status indicator
-  uint16_t status_color = bmp_available ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-  tft.fillRect(5, 5, 8, 8, status_color);
+  // Status indicators
+  uint16_t bmp_color = bmp_available ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
+  uint16_t imu_color = imu_available ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
+  tft.fillRect(5, 5, 6, 6, bmp_color);
+  tft.fillRect(12, 5, 6, 6, imu_color);
   
-  // Current altitude - very large
+  // Current altitude
   drawText(10, 25, "ALTITUDE", COLOR_ALTITUDE);
   drawNumber(10, 40, current_altitude, 2, COLOR_ALTITUDE);
   drawText(90, 40, "m", COLOR_ALTITUDE);
   
-  // Max altitude - always visible
-  drawText(10, 60, "MAXIMUM", COLOR_MAX_ALT);
-  drawNumber(10, 75, max_altitude, 2, COLOR_MAX_ALT);
-  drawText(90, 75, "m", COLOR_MAX_ALT);
+  // Max altitude
+  drawText(10, 55, "MAX ALT", COLOR_MAX_ALT);
+  drawNumber(10, 70, max_altitude, 2, COLOR_MAX_ALT);
+  drawText(90, 70, "m", COLOR_MAX_ALT);
   
-  // Difference from max
-  float diff = current_altitude - max_altitude;
-  uint16_t diff_color = (diff >= 0) ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-  drawText(10, 95, "DIFF", diff_color);
-  drawNumber(10, 110, diff, 2, diff_color);
-  drawText(90, 110, "m", diff_color);
+  // Current acceleration
+  drawText(10, 85, "ACCEL", COLOR_ACCEL);
+  drawNumber(10, 100, current_acceleration, 2, COLOR_ACCEL);
+  drawText(90, 100, "g", COLOR_ACCEL);
+  
+  // Max acceleration with axis indicator
+  drawText(10, 115, "MAX ACC", COLOR_MAX_ACCEL);
+  drawNumber(60, 115, max_acceleration, 2, COLOR_MAX_ACCEL);
+  drawText(95, 115, "g", COLOR_MAX_ACCEL);
+  
+  // Show which axis had the max acceleration (on next line due to space)
+  char axis_label[4];
+  sprintf(axis_label, "(%c)", max_acceleration_axis);
+  drawText(105, 115, axis_label, COLOR_MAX_ACCEL);
 }
 
 void updateStatusLED() {
@@ -368,8 +459,10 @@ void updateStatusLED() {
     }
     
     // Color based on system status
-    if (bmp_available) {
-      pixels.setPixelColor(0, pixels.Color(0, led_brightness, 0)); // Green - working
+    if (bmp_available && imu_available) {
+      pixels.setPixelColor(0, pixels.Color(0, led_brightness, 0)); // Green - both working
+    } else if (bmp_available || imu_available) {
+      pixels.setPixelColor(0, pixels.Color(led_brightness, led_brightness, 0)); // Yellow - partial
     } else {
       pixels.setPixelColor(0, pixels.Color(led_brightness, 0, 0)); // Red - error
     }
@@ -436,6 +529,8 @@ void setupWebServer() {
         .data { font-size: 24px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px; }
         .altitude { color: #00aa00; font-weight: bold; }
         .max-alt { color: #aa0000; font-weight: bold; }
+        .accel { color: #aa00aa; font-weight: bold; }
+        .max-accel { color: #cc6600; font-weight: bold; }
         .temp { color: #0000aa; }
         .pressure { color: #aa6600; }
         .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
@@ -451,10 +546,12 @@ void setupWebServer() {
         <div class="data">
             <div class="altitude">Current Altitude: <span id="altitude">--</span> m</div>
             <div class="max-alt">Maximum Altitude: <span id="max-altitude">--</span> m</div>
+            <div class="accel">Current Acceleration: <span id="acceleration">--</span> g</div>
+            <div class="max-accel">Maximum Acceleration: <span id="max-acceleration">--</span> g (<span id="max-acceleration-axis">-</span> axis)</div>
             <div class="temp">Temperature: <span id="temperature">--</span> °C</div>
             <div class="pressure">Pressure: <span id="pressure">--</span> hPa</div>
         </div>
-        <button onclick="resetAltitude()">Reset Max Altitude</button>
+        <button onclick="resetMaxValues()">Reset Max Values</button>
         <button onclick="toggleDisplay()">Toggle Display</button>
         <button onclick="refreshData()">Refresh Data</button>
     </div>
@@ -466,16 +563,22 @@ void setupWebServer() {
                 .then(data => {
                     document.getElementById('altitude').textContent = data.altitude.toFixed(1);
                     document.getElementById('max-altitude').textContent = data.max_altitude.toFixed(1);
+                    document.getElementById('acceleration').textContent = data.acceleration.toFixed(2);
+                    document.getElementById('max-acceleration').textContent = data.max_acceleration.toFixed(2);
+                    document.getElementById('max-acceleration-axis').textContent = data.max_acceleration_axis;
                     document.getElementById('temperature').textContent = data.temperature.toFixed(1);
                     document.getElementById('pressure').textContent = data.pressure.toFixed(1);
                     
                     const statusDiv = document.getElementById('status');
-                    if (data.bmp_status) {
+                    if (data.bmp_status && data.imu_status) {
                         statusDiv.className = 'status ok';
-                        statusDiv.textContent = '✓ BMP180 sensor working';
+                        statusDiv.textContent = '✓ All sensors working';
+                    } else if (data.bmp_status || data.imu_status) {
+                        statusDiv.className = 'status ok';
+                        statusDiv.textContent = '✓ Partial sensor operation';
                     } else {
                         statusDiv.className = 'status error';
-                        statusDiv.textContent = '✗ BMP180 sensor error';
+                        statusDiv.textContent = '✗ Sensor errors detected';
                     }
                 })
                 .catch(error => {
@@ -485,7 +588,7 @@ void setupWebServer() {
                 });
         }
         
-        function resetAltitude() {
+        function resetMaxValues() {
             fetch('/reset', {method: 'POST'})
                 .then(() => setTimeout(updateData, 500));
         }
@@ -516,8 +619,11 @@ void setupWebServer() {
   server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request){
     if (bmp_available) {
       max_altitude = 0.0;
-      needs_full_refresh = true;
     }
+    if (imu_available) {
+      max_acceleration = 0.0;
+    }
+    needs_full_refresh = true;
     request->send(200, "text/plain", "OK");
   });
 
@@ -535,9 +641,13 @@ String getAltimeterJSON() {
   String json = "{";
   json += "\"altitude\":" + String(current_altitude, 2) + ",";
   json += "\"max_altitude\":" + String(max_altitude, 2) + ",";
+  json += "\"acceleration\":" + String(current_acceleration, 2) + ",";
+  json += "\"max_acceleration\":" + String(max_acceleration, 2) + ",";
+  json += "\"max_acceleration_axis\":\"" + String(max_acceleration_axis) + "\",";
   json += "\"temperature\":" + String(temperature, 2) + ",";
   json += "\"pressure\":" + String(pressure/100.0, 2) + ",";
-  json += "\"bmp_status\":" + String(bmp_available ? "true" : "false");
+  json += "\"bmp_status\":" + String(bmp_available ? "true" : "false") + ",";
+  json += "\"imu_status\":" + String(imu_available ? "true" : "false");
   json += "}";
   return json;
 }
