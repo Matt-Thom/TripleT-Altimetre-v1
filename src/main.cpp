@@ -145,8 +145,16 @@ void setup() {
     float current_pressure_hpa = bmp.readPressure() / 100.0;
     baseline_pressure = 101325.0; // Standard sea level pressure
     
+    // Get initial altitude reading
+    float initial_altitude = bmp.readAltitude(baseline_pressure);
+    
+    // Initialize max_altitude to current altitude (absolute altitude tracking)
+    max_altitude = initial_altitude;
+    
     Serial.printf("✓ Current pressure: %.2f hPa\n", current_pressure_hpa);
     Serial.printf("✓ Using sea level baseline: %.2f hPa\n", baseline_pressure / 100.0);
+    Serial.printf("✓ Current altitude: %.2f m above sea level\n", initial_altitude);
+    Serial.printf("✓ Max altitude initialized to: %.2f m\n", max_altitude);
   } else {
     Serial.println("✗ BMP180 sensor initialization failed!");
     Serial.println("  Check connections: SDA→GPIO12, SCL→GPIO11");
@@ -157,8 +165,17 @@ void setup() {
   imu_available = imu.begin();
   if (imu_available) {
     Serial.println("✓ IMU simulator initialized successfully");
+    
+    // Initialize max acceleration with a reasonable starting value
+    // Since gravity is ~1g, we expect at least that much in Z-axis
+    max_acceleration = 1.0;  // Start with 1g baseline
+    max_acceleration_axis = 'Z';
+    Serial.printf("✓ Max acceleration initialized to: %.2fg (%c axis)\n", max_acceleration, max_acceleration_axis);
   } else {
     Serial.println("✗ IMU simulator initialization failed!");
+    // Still initialize max acceleration for fallback simulation
+    max_acceleration = 1.0;
+    max_acceleration_axis = 'Z';
   }
 
   // Set LED color based on sensor status
@@ -291,10 +308,21 @@ void updateSensors() {
   if (bmp_available) {
     temperature = bmp.readTemperature();
     pressure = bmp.readPressure();
-    float raw_altitude = bmp.readAltitude(baseline_pressure);
-    current_altitude = raw_altitude - baseline_altitude;
+    current_altitude = bmp.readAltitude(baseline_pressure);  // Use absolute altitude
     
     // Track maximum altitude
+    // Update max_altitude if current reading is higher
+    if (current_altitude > max_altitude) {
+      max_altitude = current_altitude;
+    }
+  } else {
+    // Simulate altitude changes when BMP180 is not available (for testing)
+    float time_sec = millis() / 1000.0;
+    current_altitude = 350.0 + 5.0 * sin(time_sec * 0.1) + 2.0 * sin(time_sec * 0.3);  // Simulate around 350m elevation
+    temperature = 22.0 + 3.0 * sin(time_sec * 0.05);  // Simulated temperature
+    pressure = 101325.0 + 500.0 * sin(time_sec * 0.08);  // Simulated pressure
+    
+    // Track maximum altitude for simulated data
     if (current_altitude > max_altitude) {
       max_altitude = current_altitude;
     }
@@ -305,35 +333,41 @@ void updateSensors() {
     accel_x = imu.getAccelX();
     accel_y = imu.getAccelY();
     accel_z = imu.getAccelZ();
-    
-    // Calculate total acceleration magnitude for display
-    current_acceleration = sqrt(accel_x*accel_x + accel_y*accel_y + accel_z*accel_z);
-    
-    // Track maximum acceleration from any individual axis
-    // Use fabs() for proper floating-point absolute values
-    float abs_accel_x = fabs(accel_x);
-    float abs_accel_y = fabs(accel_y);
-    float abs_accel_z = fabs(accel_z);
-    
-    // Find the highest acceleration from any axis
-    float max_current_axis = abs_accel_x;
-    char current_max_axis = 'X';
-    
-    if (abs_accel_y > max_current_axis) {
-      max_current_axis = abs_accel_y;
-      current_max_axis = 'Y';
-    }
-    
-    if (abs_accel_z > max_current_axis) {
-      max_current_axis = abs_accel_z;
-      current_max_axis = 'Z';
-    }
-    
-    // Update maximum if this reading is higher
-    if (max_current_axis > max_acceleration) {
-      max_acceleration = max_current_axis;
-      max_acceleration_axis = current_max_axis;
-    }
+  } else {
+    // Simulate acceleration when IMU is not available (for testing)
+    float time_sec = millis() / 1000.0;
+    accel_x = 0.3 * sin(time_sec * 0.8) + 0.1 * sin(time_sec * 2.1);
+    accel_y = 0.25 * cos(time_sec * 0.6) + 0.15 * cos(time_sec * 1.8);
+    accel_z = 1.0 + 0.4 * sin(time_sec * 0.4) + 0.2 * sin(time_sec * 3.2);
+  }
+  
+  // Calculate total acceleration magnitude for display
+  current_acceleration = sqrt(accel_x*accel_x + accel_y*accel_y + accel_z*accel_z);
+  
+  // Track maximum acceleration from any individual axis
+  // Use fabs() for proper floating-point absolute values
+  float abs_accel_x = fabs(accel_x);
+  float abs_accel_y = fabs(accel_y);
+  float abs_accel_z = fabs(accel_z);
+  
+  // Find the highest acceleration from any axis
+  float max_current_axis = abs_accel_x;
+  char current_max_axis = 'X';
+  
+  if (abs_accel_y > max_current_axis) {
+    max_current_axis = abs_accel_y;
+    current_max_axis = 'Y';
+  }
+  
+  if (abs_accel_z > max_current_axis) {
+    max_current_axis = abs_accel_z;
+    current_max_axis = 'Z';
+  }
+  
+  // Update maximum if this reading is higher
+  if (max_current_axis > max_acceleration) {
+    max_acceleration = max_current_axis;
+    max_acceleration_axis = current_max_axis;
   }
   
   // Serial output every 5 seconds
@@ -341,15 +375,18 @@ void updateSensors() {
   if (millis() - last_serial_output >= 5000) {
     Serial.printf("ALT: %.2fm (MAX: %.2fm) | ACC: %.2fg (MAX: %.2fg-%c) | TEMP: %.1f°C | PRESS: %.1f hPa\n", 
                   current_altitude, max_altitude, current_acceleration, max_acceleration, max_acceleration_axis, temperature, pressure/100.0);
+    Serial.printf("DEBUG ALT: raw_altitude=%.2fm, current_altitude=%.2fm, max_altitude=%.2fm\n", 
+                  bmp_available ? bmp.readAltitude(baseline_pressure) : current_altitude, current_altitude, max_altitude);
+    Serial.printf("DEBUG ACC: X=%.2fg, Y=%.2fg, Z=%.2fg, current_mag=%.2fg, max=%.2fg-%c\n", 
+                  accel_x, accel_y, accel_z, current_acceleration, max_acceleration, max_acceleration_axis);
     last_serial_output = millis();
   }
 }
 
 void updateDisplay() {
-  if (needs_full_refresh) {
-    tft.fillScreen(COLOR_BACKGROUND);
-    needs_full_refresh = false;
-  }
+  // Always do a full screen refresh to prevent digit corruption
+  tft.fillScreen(COLOR_BACKGROUND);
+  needs_full_refresh = false;
   
   if (display_mode == 0) {
     drawMainDisplay();

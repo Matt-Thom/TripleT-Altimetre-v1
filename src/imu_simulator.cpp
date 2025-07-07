@@ -16,9 +16,9 @@ bool IMUSimulator::begin() {
     // Simulate IMU initialization
     delay(100);
     
-    // Simulate 80% chance of successful initialization
+    // Always succeed for testing purposes
     // In real implementation, this would attempt to communicate with actual IMU
-    initialized = (random(100) < 80);
+    initialized = true;  // Force success for testing
     
     if (initialized) {
         Serial.println("IMU Simulator: Initialized successfully");
