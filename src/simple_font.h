@@ -28,7 +28,7 @@ private:
 };
 
 // Font bitmap data
-const uint8_t SimpleFont::font_data[][5] = {
+inline const uint8_t SimpleFont::font_data[][5] = {
     // Space (32)
     {0x00, 0x00, 0x00, 0x00, 0x00},
     // ! (33)
@@ -221,14 +221,14 @@ const uint8_t SimpleFont::font_data[][5] = {
     {0x08, 0x04, 0x08, 0x10, 0x08}
 };
 
-const uint8_t* SimpleFont::getCharData(char c) {
+inline const uint8_t* SimpleFont::getCharData(char c) {
     if (c < FONT_START || c > FONT_END) {
         return font_data[0]; // Return space for invalid characters
     }
     return font_data[c - FONT_START];
 }
 
-int SimpleFont::getTextWidth(const char* text) {
+inline int SimpleFont::getTextWidth(const char* text) {
     int width = 0;
     while (*text) {
         width += CHAR_WIDTH + CHAR_SPACING;
