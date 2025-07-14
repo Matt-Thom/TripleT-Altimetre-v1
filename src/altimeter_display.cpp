@@ -47,47 +47,47 @@ void AltimeterDisplay::drawHeader() {
     // Draw header background
     tft->fillRect(0, 0, 128, HEADER_HEIGHT, COLOR_HEADER);
     
-    // Draw title based on mode
+    // Draw title based on mode - use shorter titles
     const char* title;
     switch (display_mode) {
         case MODE_OVERVIEW:
-            title = "ALTIMETER";
+            title = "ALTIM";  // Shortened from "ALTIMETER"
             break;
         case MODE_ALTITUDE_DETAIL:
-            title = "ALTITUDE";
+            title = "ALT";    // Shortened from "ALTITUDE"
             break;
         case MODE_ENVIRONMENTAL:
-            title = "ENVIRONMENT";
+            title = "ENV";    // Shortened from "ENVIRONMENT"
             break;
         case MODE_IMU_DETAIL:
-            title = "IMU DATA";
+            title = "IMU";    // Shortened from "IMU DATA"
             break;
         default:
-            title = "ALTIMETER";
+            title = "ALTIM";
             break;
     }
     
     // Simple text rendering using rectangles (since we don't have fonts)
-    drawText(10, 5, title, COLOR_TEXT);
+    drawText(2, 5, title, COLOR_TEXT);
 }
 
 void AltimeterDisplay::drawStatusBar() {
     // Clear status area
     tft->fillRect(0, HEADER_HEIGHT, 128, STATUS_HEIGHT, COLOR_BACKGROUND);
     
-    // Draw sensor status indicators
-    // BMP180 status
+    // Draw sensor status indicators with better spacing
+    // BMP180 status - moved closer to left edge
     uint16_t bmp_color = bmp_status ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-    tft->fillRect(5, HEADER_HEIGHT + 2, 8, 8, bmp_color);
-    drawText(15, HEADER_HEIGHT + 2, "BMP", COLOR_TEXT);
+    tft->fillRect(2, HEADER_HEIGHT + 3, 6, 6, bmp_color);
+    drawText(10, HEADER_HEIGHT + 2, "BMP", COLOR_TEXT);
     
-    // IMU status
+    // IMU status - adjusted position
     uint16_t imu_color = imu_status ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-    tft->fillRect(45, HEADER_HEIGHT + 2, 8, 8, imu_color);
-    drawText(55, HEADER_HEIGHT + 2, "IMU", COLOR_TEXT);
+    tft->fillRect(35, HEADER_HEIGHT + 3, 6, 6, imu_color);
+    drawText(43, HEADER_HEIGHT + 2, "IMU", COLOR_TEXT);
     
-    // Battery symbol in top right corner
-    drawBatterySymbol(128 - 60, HEADER_HEIGHT + 2, battery_percentage);
+    // Battery symbol in top right corner with more space
+    drawBatterySymbol(128 - 45, HEADER_HEIGHT + 1, battery_percentage);
 }
 
 void AltimeterDisplay::drawDataArea() {
@@ -111,170 +111,170 @@ void AltimeterDisplay::drawDataArea() {
 }
 
 void AltimeterDisplay::drawAltitudeData() {
-    int y = DATA_AREA_Y + 5;
+    int y = DATA_AREA_Y + 8;  // Increased top margin
     
     if (display_mode == MODE_OVERVIEW) {
-        // Compact overview mode
+        // Compact overview mode with improved spacing
         
         // Current altitude - large display
-        drawText(5, y, "ALT:", COLOR_ALTITUDE);
-        drawNumber(35, y, current_altitude, 1, COLOR_ALTITUDE);
-        drawText(90, y, "m", COLOR_ALTITUDE);
+        drawText(2, y, "ALT:", COLOR_ALTITUDE);
+        drawNumber(28, y, current_altitude, 1, COLOR_ALTITUDE);
+        drawText(80, y, "m", COLOR_ALTITUDE);
         
-        y += 15;
+        y += 18;  // Increased spacing
         
         // Max altitude
-        drawText(5, y, "MAX:", COLOR_MAX_ALT);
-        drawNumber(35, y, max_altitude, 1, COLOR_MAX_ALT);
-        drawText(90, y, "m", COLOR_MAX_ALT);
+        drawText(2, y, "MAX:", COLOR_MAX_ALT);
+        drawNumber(28, y, max_altitude, 1, COLOR_MAX_ALT);
+        drawText(80, y, "m", COLOR_MAX_ALT);
         
-        y += 15;
+        y += 18;  // Increased spacing
         
-        // Temperature and pressure (compact)
-        drawText(5, y, "T:", COLOR_TEMP);
-        drawNumber(20, y, temperature, 1, COLOR_TEMP);
-        drawText(50, y, "C", COLOR_TEMP);
+        // Temperature and pressure (compact) - shortened labels
+        drawText(2, y, "T:", COLOR_TEMP);
+        drawNumber(16, y, temperature, 1, COLOR_TEMP);
+        drawText(42, y, "C", COLOR_TEMP);
         
-        drawText(65, y, "P:", COLOR_PRESSURE);
-        drawNumber(80, y, pressure/100.0, 0, COLOR_PRESSURE);
+        drawText(55, y, "P:", COLOR_PRESSURE);
+        drawNumber(69, y, pressure/100.0, 0, COLOR_PRESSURE);
         
-        y += 15;
+        y += 18;  // Increased spacing
         
         // Altitude bar graph
         float alt_range = max(abs(current_altitude), abs(max_altitude)) + 10;
-        drawBarGraph(5, y, 118, 12, current_altitude, -alt_range, alt_range, COLOR_ALTITUDE);
+        drawBarGraph(2, y, 124, 10, current_altitude, -alt_range, alt_range, COLOR_ALTITUDE);
         
-        y += 20;
+        y += 18;  // Increased spacing
         
         // IMU status (if available)
         if (imu_status) {
             // Simple acceleration magnitude indicator
             float accel_mag = sqrt(accel_x*accel_x + accel_y*accel_y + accel_z*accel_z);
-            drawText(5, y, "ACC:", COLOR_IMU);
-            drawNumber(35, y, accel_mag, 2, COLOR_IMU);
-            drawText(90, y, "g", COLOR_IMU);
+            drawText(2, y, "ACC:", COLOR_IMU);
+            drawNumber(28, y, accel_mag, 2, COLOR_IMU);
+            drawText(80, y, "g", COLOR_IMU);
         }
         
     } else {
-        // Detailed altitude mode
+        // Detailed altitude mode with better spacing
         
-        // Current altitude - very large
-        drawText(5, y, "CURRENT ALTITUDE", COLOR_ALTITUDE);
-        y += 12;
-        drawNumber(10, y, current_altitude, 2, COLOR_ALTITUDE);
-        drawText(90, y, "meters", COLOR_ALTITUDE);
+        // Current altitude - shortened label
+        drawText(2, y, "CURRENT ALT", COLOR_ALTITUDE);
+        y += 14;  // Increased spacing
+        drawNumber(5, y, current_altitude, 2, COLOR_ALTITUDE);
+        drawText(80, y, "m", COLOR_ALTITUDE);
         
-        y += 20;
+        y += 22;  // Increased spacing
         
-        // Maximum altitude
-        drawText(5, y, "MAXIMUM ALTITUDE", COLOR_MAX_ALT);
-        y += 12;
-        drawNumber(10, y, max_altitude, 2, COLOR_MAX_ALT);
-        drawText(90, y, "meters", COLOR_MAX_ALT);
+        // Maximum altitude - shortened label
+        drawText(2, y, "MAX ALT", COLOR_MAX_ALT);
+        y += 14;  // Increased spacing
+        drawNumber(5, y, max_altitude, 2, COLOR_MAX_ALT);
+        drawText(80, y, "m", COLOR_MAX_ALT);
         
-        y += 20;
+        y += 22;  // Increased spacing
         
-        // Altitude difference
+        // Altitude difference - shortened label
         float diff = current_altitude - max_altitude;
         uint16_t diff_color = (diff >= 0) ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-        drawText(5, y, "DIFF FROM MAX", diff_color);
-        y += 12;
-        drawNumber(10, y, diff, 2, diff_color);
-        drawText(90, y, "meters", diff_color);
+        drawText(2, y, "DIFF", diff_color);
+        y += 14;  // Increased spacing
+        drawNumber(5, y, diff, 2, diff_color);
+        drawText(80, y, "m", diff_color);
     }
 }
 
 void AltimeterDisplay::drawEnvironmentalData() {
-    int y = DATA_AREA_Y + 5;
+    int y = DATA_AREA_Y + 8;  // Increased top margin
     
-    // Always show current and max altitude at top
-    drawText(5, y, "ALT:", COLOR_ALTITUDE);
-    drawNumber(30, y, current_altitude, 1, COLOR_ALTITUDE);
-    drawText(70, y, "MAX:", COLOR_MAX_ALT);
-    drawNumber(95, y, max_altitude, 1, COLOR_MAX_ALT);
-    y += 15;
+    // Always show current and max altitude at top - shortened labels
+    drawText(2, y, "ALT:", COLOR_ALTITUDE);
+    drawNumber(24, y, current_altitude, 1, COLOR_ALTITUDE);
+    drawText(65, y, "MAX:", COLOR_MAX_ALT);
+    drawNumber(87, y, max_altitude, 1, COLOR_MAX_ALT);
+    y += 18;  // Increased spacing
     
-    // Temperature
-    drawText(5, y, "TEMPERATURE", COLOR_TEMP);
-    y += 12;
-    drawNumber(10, y, temperature, 2, COLOR_TEMP);
-    drawText(80, y, "°C", COLOR_TEMP);
+    // Temperature - shortened label
+    drawText(2, y, "TEMP", COLOR_TEMP);
+    y += 14;  // Increased spacing
+    drawNumber(5, y, temperature, 2, COLOR_TEMP);
+    drawText(65, y, "°C", COLOR_TEMP);
     
-    y += 15;
+    y += 18;  // Increased spacing
     
     // Temperature bar graph (-10 to 40°C range)
-    drawBarGraph(5, y, 118, 8, temperature, -10, 40, COLOR_TEMP);
+    drawBarGraph(2, y, 124, 8, temperature, -10, 40, COLOR_TEMP);
     
-    y += 15;
+    y += 18;  // Increased spacing
     
-    // Pressure
-    drawText(5, y, "PRESSURE", COLOR_PRESSURE);
-    y += 12;
-    drawNumber(10, y, pressure/100.0, 1, COLOR_PRESSURE);
-    drawText(80, y, "hPa", COLOR_PRESSURE);
+    // Pressure - shortened label
+    drawText(2, y, "PRESS", COLOR_PRESSURE);
+    y += 14;  // Increased spacing
+    drawNumber(5, y, pressure/100.0, 1, COLOR_PRESSURE);
+    drawText(65, y, "hPa", COLOR_PRESSURE);
     
-    y += 15;
+    y += 18;  // Increased spacing
     
     // Pressure bar graph (900 to 1100 hPa range)
-    drawBarGraph(5, y, 118, 8, pressure/100.0, 900, 1100, COLOR_PRESSURE);
+    drawBarGraph(2, y, 124, 8, pressure/100.0, 900, 1100, COLOR_PRESSURE);
 }
 
 void AltimeterDisplay::drawIMUData() {
-    int y = DATA_AREA_Y + 5;
+    int y = DATA_AREA_Y + 8;  // Increased top margin
     
-    // Always show current and max altitude at top
-    drawText(5, y, "ALT:", COLOR_ALTITUDE);
-    drawNumber(30, y, current_altitude, 1, COLOR_ALTITUDE);
-    drawText(70, y, "MAX:", COLOR_MAX_ALT);
-    drawNumber(95, y, max_altitude, 1, COLOR_MAX_ALT);
-    y += 15;
+    // Always show current and max altitude at top - shortened labels
+    drawText(2, y, "ALT:", COLOR_ALTITUDE);
+    drawNumber(24, y, current_altitude, 1, COLOR_ALTITUDE);
+    drawText(65, y, "MAX:", COLOR_MAX_ALT);
+    drawNumber(87, y, max_altitude, 1, COLOR_MAX_ALT);
+    y += 18;  // Increased spacing
     
     if (imu_status) {
-        // Acceleration data
-        drawText(5, y, "ACCELERATION", COLOR_IMU);
-        y += 10;
+        // Acceleration data - shortened label
+        drawText(2, y, "ACCEL", COLOR_IMU);
+        y += 12;  // Increased spacing
         
-        drawText(5, y, "X:", COLOR_IMU);
-        drawNumber(20, y, accel_x, 2, COLOR_IMU);
-        drawText(60, y, "g", COLOR_IMU);
-        y += 8;
+        drawText(2, y, "X:", COLOR_IMU);
+        drawNumber(16, y, accel_x, 2, COLOR_IMU);
+        drawText(50, y, "g", COLOR_IMU);
+        y += 10;  // Increased spacing
         
-        drawText(5, y, "Y:", COLOR_IMU);
-        drawNumber(20, y, accel_y, 2, COLOR_IMU);
-        drawText(60, y, "g", COLOR_IMU);
-        y += 8;
+        drawText(2, y, "Y:", COLOR_IMU);
+        drawNumber(16, y, accel_y, 2, COLOR_IMU);
+        drawText(50, y, "g", COLOR_IMU);
+        y += 10;  // Increased spacing
         
-        drawText(5, y, "Z:", COLOR_IMU);
-        drawNumber(20, y, accel_z, 2, COLOR_IMU);
-        drawText(60, y, "g", COLOR_IMU);
-        y += 12;
+        drawText(2, y, "Z:", COLOR_IMU);
+        drawNumber(16, y, accel_z, 2, COLOR_IMU);
+        drawText(50, y, "g", COLOR_IMU);
+        y += 14;  // Increased spacing
         
-        // Gyroscope data
-        drawText(5, y, "GYROSCOPE", COLOR_IMU);
-        y += 10;
+        // Gyroscope data - shortened label
+        drawText(2, y, "GYRO", COLOR_IMU);
+        y += 12;  // Increased spacing
         
-        drawText(5, y, "X:", COLOR_IMU);
-        drawNumber(20, y, gyro_x, 1, COLOR_IMU);
-        drawText(70, y, "°/s", COLOR_IMU);
-        y += 8;
+        drawText(2, y, "X:", COLOR_IMU);
+        drawNumber(16, y, gyro_x, 1, COLOR_IMU);
+        drawText(55, y, "°/s", COLOR_IMU);
+        y += 10;  // Increased spacing
         
-        drawText(5, y, "Y:", COLOR_IMU);
-        drawNumber(20, y, gyro_y, 1, COLOR_IMU);
-        drawText(70, y, "°/s", COLOR_IMU);
-        y += 8;
+        drawText(2, y, "Y:", COLOR_IMU);
+        drawNumber(16, y, gyro_y, 1, COLOR_IMU);
+        drawText(55, y, "°/s", COLOR_IMU);
+        y += 10;  // Increased spacing
         
-        drawText(5, y, "Z:", COLOR_IMU);
-        drawNumber(20, y, gyro_z, 1, COLOR_IMU);
-        drawText(70, y, "°/s", COLOR_IMU);
+        drawText(2, y, "Z:", COLOR_IMU);
+        drawNumber(16, y, gyro_z, 1, COLOR_IMU);
+        drawText(55, y, "°/s", COLOR_IMU);
         
     } else {
-        drawText(5, y, "IMU NOT DETECTED", COLOR_STATUS_ERROR);
-        y += 15;
-        drawText(5, y, "Check connections", COLOR_TEXT);
-        y += 12;
-        drawText(5, y, "SDA: GPIO12", COLOR_TEXT);
-        y += 8;
-        drawText(5, y, "SCL: GPIO11", COLOR_TEXT);
+        drawText(2, y, "IMU NOT FOUND", COLOR_STATUS_ERROR);
+        y += 18;  // Increased spacing
+        drawText(2, y, "Check wiring", COLOR_TEXT);
+        y += 14;  // Increased spacing
+        drawText(2, y, "SDA: GPIO12", COLOR_TEXT);
+        y += 10;  // Increased spacing
+        drawText(2, y, "SCL: GPIO11", COLOR_TEXT);
     }
 }
 
@@ -347,11 +347,11 @@ void AltimeterDisplay::clearArea(int x, int y, int width, int height) {
 }
 
 void AltimeterDisplay::drawBatterySymbol(int x, int y, int percentage) {
-    // Battery symbol dimensions
-    const int width = 18;
-    const int height = 10;
+    // Battery symbol dimensions - made more compact
+    const int width = 14;
+    const int height = 8;
     const int tip_width = 2;
-    const int tip_height = 4;
+    const int tip_height = 3;
     
     // Draw battery outline
     tft->drawRect(x, y, width, height, COLOR_TEXT);
@@ -380,10 +380,10 @@ void AltimeterDisplay::drawBatterySymbol(int x, int y, int percentage) {
         tft->fillRect(x + 1, y + 1, fill_width, height - 2, fill_color);
     }
     
-    // Draw percentage text next to battery
-    char percent_text[5];
+    // Draw percentage text next to battery - more compact
+    char percent_text[4];
     sprintf(percent_text, "%d%%", percentage);
-    drawText(x + width + tip_width + 2, y + 1, percent_text, COLOR_TEXT);
+    drawText(x + width + tip_width + 1, y, percent_text, COLOR_TEXT);
 }
 
 // Public methods

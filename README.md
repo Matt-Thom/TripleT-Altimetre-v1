@@ -5,7 +5,11 @@ A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microco
 ## Recent Improvements
 
 ### ✅ Enhanced Display System
-- **Increased Font Size**: Text is now 100% larger (2x scaling) for much better readability
+- **Improved Layout Design**: Fixed text overlap issues and optimized spacing for better readability
+- **Shortened Text Labels**: Reduced header text ("ALTIMETER" → "ALTIM", "ENVIRONMENT" → "ENV") to prevent overlap
+- **Compact Battery Display**: Redesigned battery icon and percentage display to avoid text conflicts
+- **Better Spacing**: Increased vertical spacing between elements to prevent visual clutter
+- **Optimized Font Scaling**: Improved text positioning and sizing for small 128x128 display
 - **Multiple Display Screens**: 4 comprehensive screens accessible via button press:
   - **Overview**: Current altitude, max altitude, temperature, pressure, and acceleration
   - **Altitude Detail**: Detailed altitude information with difference from maximum
@@ -71,32 +75,32 @@ A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microco
 
 ## Display Screens
 
-### Screen 1: Overview Mode
-- Current altitude (large, green text)
-- Maximum altitude (red text)
-- Temperature and pressure (compact display)
-- Altitude bar graph visualization
-- Acceleration magnitude (if IMU available)
-- Battery symbol in top right corner
+### Screen 1: Overview Mode ("ALTIM")
+- Current altitude (large, green text) - improved positioning
+- Maximum altitude (red text) - better spacing
+- Temperature and pressure (compact display) - shortened labels
+- Altitude bar graph visualization - optimized width
+- Acceleration magnitude (if IMU available) - better alignment
+- Battery symbol in top right corner - compact design
 
-### Screen 2: Altitude Detail Mode
-- Current altitude (large, with 2 decimal places)
-- Maximum altitude (with 2 decimal places)
-- Difference from maximum altitude (color-coded)
-- Battery symbol in top right corner
+### Screen 2: Altitude Detail Mode ("ALT")
+- Current altitude (large, with 2 decimal places) - improved spacing
+- Maximum altitude (with 2 decimal places) - better layout
+- Difference from maximum altitude (color-coded) - enhanced positioning
+- Battery symbol in top right corner - optimized placement
 
-### Screen 3: Environmental Mode
-- Current and max altitude (compact, at top)
-- Temperature with bar graph visualization
-- Pressure with bar graph visualization
-- Battery symbol in top right corner
+### Screen 3: Environmental Mode ("ENV")
+- Current and max altitude (compact, at top) - improved alignment
+- Temperature with bar graph visualization - better spacing
+- Pressure with bar graph visualization - optimized layout
+- Battery symbol in top right corner - compact design
 
-### Screen 4: IMU Detail Mode
-- Current and max altitude (compact, at top)
-- Detailed accelerometer data (X, Y, Z axes)
-- Detailed gyroscope data (X, Y, Z axes)
-- Connection status and troubleshooting info
-- Battery symbol in top right corner
+### Screen 4: IMU Detail Mode ("IMU")
+- Current and max altitude (compact, at top) - improved positioning
+- Detailed accelerometer data (X, Y, Z axes) - better spacing
+- Detailed gyroscope data (X, Y, Z axes) - optimized layout
+- Connection status and troubleshooting info - enhanced readability
+- Battery symbol in top right corner - compact design
 
 ## Controls
 
@@ -266,6 +270,12 @@ TripleT-Altimetre-v1/
 ## Version History
 
 ### v2.1 (Current)
+- ✅ Fixed display layout issues with text overlap and poor readability
+- ✅ Shortened text labels and headers to prevent overlap ("ALTIMETER" → "ALTIM", etc.)
+- ✅ Redesigned battery icon and positioning to avoid text conflicts
+- ✅ Improved vertical spacing between display elements
+- ✅ Optimized font scaling and positioning for better readability
+- ✅ Enhanced status bar layout with better sensor indicator positioning
 - ✅ Implemented 2x larger fonts for better readability
 - ✅ Added 4 comprehensive display screens
 - ✅ Fixed altitude calculation with proper baseline calibration
