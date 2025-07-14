@@ -12,6 +12,8 @@ AltimeterDisplay::AltimeterDisplay(TFTTest* display) {
     gyro_x = gyro_y = gyro_z = 0.0;
     bmp_status = false;
     imu_status = false;
+    battery_voltage = 0.0;
+    battery_percentage = 0;
     last_update = 0;
     needs_full_refresh = true;
     display_mode = MODE_OVERVIEW;
@@ -84,10 +86,8 @@ void AltimeterDisplay::drawStatusBar() {
     tft->fillRect(45, HEADER_HEIGHT + 2, 8, 8, imu_color);
     drawText(55, HEADER_HEIGHT + 2, "IMU", COLOR_TEXT);
     
-    // Mode indicator
-    char mode_text[10];
-    sprintf(mode_text, "M%d", display_mode + 1);
-    drawText(95, HEADER_HEIGHT + 2, mode_text, COLOR_TEXT);
+    // Battery symbol in top right corner
+    drawBatterySymbol(128 - 60, HEADER_HEIGHT + 2, battery_percentage);
 }
 
 void AltimeterDisplay::drawDataArea() {
@@ -317,19 +317,23 @@ void AltimeterDisplay::drawNumber(int x, int y, float value, int decimals, uint1
 }
 
 void AltimeterDisplay::drawText(int x, int y, const char* text, uint16_t color) {
-    // Use bitmap font for crisp, readable text
+    // Use bitmap font for crisp, readable text with 2x scaling
     int char_x = x;
     
     for (int i = 0; text[i] != '\0' && char_x < 128 - SimpleFont::CHAR_WIDTH; i++) {
         char c = text[i];
         const uint8_t* char_data = SimpleFont::getCharData(c);
         
-        // Draw character bitmap
-        for (int col = 0; col < SimpleFont::CHAR_WIDTH; col++) {
+        // Scale font by 2x - each original pixel becomes a 2x2 block
+        for (int col = 0; col < 5; col++) {  // Use original font width (5)
             uint8_t column = char_data[col];
-            for (int row = 0; row < SimpleFont::CHAR_HEIGHT; row++) {
+            for (int row = 0; row < 7; row++) {  // Use original font height (7)
                 if (column & (1 << row)) {
-                    tft->drawPixel(char_x + col, y + row, color);
+                    // Draw each font pixel as a 2x2 block
+                    tft->drawPixel(char_x + col*2, y + row*2, color);
+                    tft->drawPixel(char_x + col*2 + 1, y + row*2, color);
+                    tft->drawPixel(char_x + col*2, y + row*2 + 1, color);
+                    tft->drawPixel(char_x + col*2 + 1, y + row*2 + 1, color);
                 }
             }
         }
@@ -340,6 +344,46 @@ void AltimeterDisplay::drawText(int x, int y, const char* text, uint16_t color) 
 
 void AltimeterDisplay::clearArea(int x, int y, int width, int height) {
     tft->fillRect(x, y, width, height, COLOR_BACKGROUND);
+}
+
+void AltimeterDisplay::drawBatterySymbol(int x, int y, int percentage) {
+    // Battery symbol dimensions
+    const int width = 18;
+    const int height = 10;
+    const int tip_width = 2;
+    const int tip_height = 4;
+    
+    // Draw battery outline
+    tft->drawRect(x, y, width, height, COLOR_TEXT);
+    
+    // Draw battery tip
+    tft->fillRect(x + width, y + (height - tip_height) / 2, tip_width, tip_height, COLOR_TEXT);
+    
+    // Clear interior
+    tft->fillRect(x + 1, y + 1, width - 2, height - 2, COLOR_BACKGROUND);
+    
+    // Calculate fill level
+    int fill_width = ((width - 2) * percentage) / 100;
+    
+    // Choose color based on battery level
+    uint16_t fill_color;
+    if (percentage > 50) {
+        fill_color = COLOR_STATUS_OK;  // Green
+    } else if (percentage > 20) {
+        fill_color = COLOR_TEMP;       // Yellow
+    } else {
+        fill_color = COLOR_STATUS_ERROR;  // Red
+    }
+    
+    // Draw fill
+    if (fill_width > 0) {
+        tft->fillRect(x + 1, y + 1, fill_width, height - 2, fill_color);
+    }
+    
+    // Draw percentage text next to battery
+    char percent_text[5];
+    sprintf(percent_text, "%d%%", percentage);
+    drawText(x + width + tip_width + 2, y + 1, percent_text, COLOR_TEXT);
 }
 
 // Public methods
@@ -367,6 +411,11 @@ void AltimeterDisplay::setIMUData(float ax, float ay, float az, float gx, float 
 void AltimeterDisplay::setSensorStatus(bool bmp_ok, bool imu_ok) {
     bmp_status = bmp_ok;
     imu_status = imu_ok;
+}
+
+void AltimeterDisplay::setBatteryData(float voltage, int percentage) {
+    battery_voltage = voltage;
+    battery_percentage = percentage;
 }
 
 void AltimeterDisplay::resetMaxAltitude() {

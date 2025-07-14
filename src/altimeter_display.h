@@ -36,6 +36,8 @@ private:
     float gyro_x, gyro_y, gyro_z;
     bool bmp_status;
     bool imu_status;
+    float battery_voltage;
+    int battery_percentage;
     
     // Display state
     unsigned long last_update;
@@ -49,6 +51,7 @@ private:
     void drawAltitudeData();
     void drawEnvironmentalData();
     void drawIMUData();
+    void drawBatterySymbol(int x, int y, int percentage);
     void drawBarGraph(int x, int y, int width, int height, float value, float min_val, float max_val, uint16_t color);
     void drawNumber(int x, int y, float value, int decimals, uint16_t color);
     void drawText(int x, int y, const char* text, uint16_t color);
@@ -63,6 +66,7 @@ public:
     void setEnvironmentalData(float temp, float press);
     void setIMUData(float ax, float ay, float az, float gx, float gy, float gz);
     void setSensorStatus(bool bmp_ok, bool imu_ok);
+    void setBatteryData(float voltage, int percentage);
     void resetMaxAltitude();
     void nextDisplayMode();
     void forceRefresh();

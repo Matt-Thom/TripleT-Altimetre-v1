@@ -8,6 +8,7 @@
 #include "tft_test.h"
 #include "simple_font.h"
 #include "imu_simulator.h"
+#include "altimeter_display.h"
 
 // --- PIN DEFINITIONS ---
 #define BUTTON_A_PIN 0
@@ -16,6 +17,7 @@
 #define RGB_DATA 8
 #define RGB_POWER 7
 #define TFT_BL 33
+#define BATTERY_PIN 1  // ADC pin for battery voltage monitoring
 
 // --- WIFI CONFIGURATION ---
 const char* wifi_ssid = "Altimeter-S3";
@@ -28,6 +30,7 @@ Adafruit_BMP085 bmp;
 IMUSimulator imu;
 TFTTest tft;
 AsyncWebServer server(80);
+AltimeterDisplay display(&tft);  // Add display instance
 
 // --- ALTIMETER STATE ---
 float current_altitude = 0.0;
@@ -37,11 +40,16 @@ float baseline_altitude = 0.0;       // Baseline altitude offset for zeroing
 float temperature = 0.0;
 float pressure = 0.0;
 
+// --- BATTERY STATE ---
+float battery_voltage = 0.0;
+int battery_percentage = 0;
+
 // --- ACCELERATION STATE ---
 float current_acceleration = 0.0;
 float max_acceleration = 0.0;
 char max_acceleration_axis = 'Z';  // Track which axis had the max acceleration
 float accel_x = 0.0, accel_y = 0.0, accel_z = 0.0;
+float gyro_x = 0.0, gyro_y = 0.0, gyro_z = 0.0;  // Gyroscope data
 
 // --- DISPLAY STATE ---
 bool display_enabled = true;
@@ -71,6 +79,7 @@ bool button_c_pressed = false;
 // --- TIMING ---
 unsigned long last_sensor_update = 0;
 unsigned long last_display_update = 0;
+unsigned long last_battery_update = 0;
 
 // --- STATUS ---
 bool bmp_available = false;
@@ -89,6 +98,9 @@ void drawNumber(int x, int y, float value, int decimals, uint16_t color);
 void drawMainDisplay();
 void drawDetailedDisplay();
 String getAltimeterJSON();
+void updateBattery();
+float readBatteryVoltage();
+int calculateBatteryPercentage(float voltage);
 
 void setup() {
   Serial.begin(115200);
@@ -133,6 +145,9 @@ void setup() {
   // Initialize display
   tft.fillScreen(COLOR_BACKGROUND);
   drawText(10, 50, "INITIALIZING...", COLOR_TEXT);
+  
+  // Initialize the AltimeterDisplay
+  display.begin();
 
   // Initialize BMP180 sensor
   Serial.println("Initializing BMP180 pressure sensor...");
@@ -143,17 +158,17 @@ void setup() {
     // Take baseline pressure reading
     delay(1000); // Wait for sensor to stabilize
     float current_pressure_hpa = bmp.readPressure() / 100.0;
-    baseline_pressure = 101325.0; // Standard sea level pressure
+    baseline_pressure = bmp.readPressure(); // Use current pressure as baseline
     
-    // Get initial altitude reading
+    // Get initial altitude reading (should be close to 0 with current pressure baseline)
     float initial_altitude = bmp.readAltitude(baseline_pressure);
     
-    // Initialize max_altitude to current altitude (absolute altitude tracking)
+    // Initialize max_altitude to current altitude
     max_altitude = initial_altitude;
     
     Serial.printf("✓ Current pressure: %.2f hPa\n", current_pressure_hpa);
-    Serial.printf("✓ Using sea level baseline: %.2f hPa\n", baseline_pressure / 100.0);
-    Serial.printf("✓ Current altitude: %.2f m above sea level\n", initial_altitude);
+    Serial.printf("✓ Using current location as baseline: %.2f hPa\n", baseline_pressure / 100.0);
+    Serial.printf("✓ Current altitude: %.2f m (relative to start)\n", initial_altitude);
     Serial.printf("✓ Max altitude initialized to: %.2f m\n", max_altitude);
   } else {
     Serial.println("✗ BMP180 sensor initialization failed!");
@@ -228,6 +243,12 @@ void loop() {
     last_sensor_update = now;
   }
   
+  // Update battery (every 5 seconds)
+  if (now - last_battery_update >= 5000) {  // Every 5 seconds
+    updateBattery();
+    last_battery_update = now;
+  }
+  
   // Update display (only if enabled)
   if (display_enabled && now - last_display_update >= 500) {  // 2Hz display updates
     updateDisplay();
@@ -250,7 +271,11 @@ void handleButtons() {
     Serial.println("Button A: Resetting max altitude and acceleration to zero");
     
     if (bmp_available) {
+      // Reset baseline pressure to current pressure for accurate relative altitude
+      baseline_pressure = bmp.readPressure();
       max_altitude = 0.0;
+      display.resetMaxAltitude();
+      Serial.printf("✓ Baseline pressure reset to: %.2f hPa\n", baseline_pressure / 100.0);
       Serial.printf("✓ Max altitude reset to 0m\n");
     }
     if (imu_available) {
@@ -270,8 +295,8 @@ void handleButtons() {
   bool button_b_current = (digitalRead(BUTTON_B_PIN) == LOW);
   if (button_b_current && !button_b_pressed && (now - last_button_press) > button_debounce) {
     last_button_press = now;
-    display_mode = (display_mode + 1) % 2;
-    Serial.printf("Button B: Display mode %d\n", display_mode);
+    display.nextDisplayMode();
+    Serial.printf("Button B: Display mode switched\n");
     needs_full_refresh = true;
     
     // Flash blue
@@ -333,12 +358,18 @@ void updateSensors() {
     accel_x = imu.getAccelX();
     accel_y = imu.getAccelY();
     accel_z = imu.getAccelZ();
+    gyro_x = imu.getGyroX();
+    gyro_y = imu.getGyroY();
+    gyro_z = imu.getGyroZ();
   } else {
     // Simulate acceleration when IMU is not available (for testing)
     float time_sec = millis() / 1000.0;
     accel_x = 0.3 * sin(time_sec * 0.8) + 0.1 * sin(time_sec * 2.1);
     accel_y = 0.25 * cos(time_sec * 0.6) + 0.15 * cos(time_sec * 1.8);
     accel_z = 1.0 + 0.4 * sin(time_sec * 0.4) + 0.2 * sin(time_sec * 3.2);
+    gyro_x = 0.05 * sin(time_sec * 0.5);
+    gyro_y = 0.03 * cos(time_sec * 0.7);
+    gyro_z = 0.02 * sin(time_sec * 0.9);
   }
   
   // Calculate total acceleration magnitude for display
@@ -384,15 +415,15 @@ void updateSensors() {
 }
 
 void updateDisplay() {
-  // Always do a full screen refresh to prevent digit corruption
-  tft.fillScreen(COLOR_BACKGROUND);
-  needs_full_refresh = false;
+  // Update the display with current sensor data
+  display.setAltitudeData(current_altitude, max_altitude);
+  display.setEnvironmentalData(temperature, pressure);
+  display.setIMUData(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
+  display.setSensorStatus(bmp_available, imu_available);
+  display.setBatteryData(battery_voltage, battery_percentage);
   
-  if (display_mode == 0) {
-    drawMainDisplay();
-  } else {
-    drawDetailedDisplay();
-  }
+  // Update the display
+  display.update();
 }
 
 void drawMainDisplay() {
@@ -515,11 +546,16 @@ void drawText(int x, int y, const char* text, uint16_t color) {
     char c = text[i];
     if (c >= 32 && c <= 126) {
       const uint8_t* char_data = SimpleFont::getCharData(c);
-      for (int col = 0; col < SimpleFont::CHAR_WIDTH; col++) {
+      // Scale font by 2x - each original pixel becomes a 2x2 block
+      for (int col = 0; col < 5; col++) {  // Use original font width (5)
         uint8_t column = char_data[col];
-        for (int row = 0; row < SimpleFont::CHAR_HEIGHT; row++) {
+        for (int row = 0; row < 7; row++) {  // Use original font height (7)
           if (column & (1 << row)) {
-            tft.drawPixel(char_x + col, y + row, color);
+            // Draw each font pixel as a 2x2 block
+            tft.drawPixel(char_x + col*2, y + row*2, color);
+            tft.drawPixel(char_x + col*2 + 1, y + row*2, color);
+            tft.drawPixel(char_x + col*2, y + row*2 + 1, color);
+            tft.drawPixel(char_x + col*2 + 1, y + row*2 + 1, color);
           }
         }
       }
@@ -570,6 +606,7 @@ void setupWebServer() {
         .max-accel { color: #cc6600; font-weight: bold; }
         .temp { color: #0000aa; }
         .pressure { color: #aa6600; }
+        .battery { color: #006600; font-weight: bold; }
         .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
         .ok { background: #d4edda; color: #155724; }
         .error { background: #f8d7da; color: #721c24; }
@@ -587,6 +624,9 @@ void setupWebServer() {
             <div class="max-accel">Maximum Acceleration: <span id="max-acceleration">--</span> g (<span id="max-acceleration-axis">-</span> axis)</div>
             <div class="temp">Temperature: <span id="temperature">--</span> °C</div>
             <div class="pressure">Pressure: <span id="pressure">--</span> hPa</div>
+            <div class="battery">Battery: <span id="battery-percentage">--</span>% (<span id="battery-voltage">--</span>V)</div>
+            <div class="accel">Accelerometer: X=<span id="accel-x">--</span>g, Y=<span id="accel-y">--</span>g, Z=<span id="accel-z">--</span>g</div>
+            <div class="accel">Gyroscope: X=<span id="gyro-x">--</span>°/s, Y=<span id="gyro-y">--</span>°/s, Z=<span id="gyro-z">--</span>°/s</div>
         </div>
         <button onclick="resetMaxValues()">Reset Max Values</button>
         <button onclick="toggleDisplay()">Toggle Display</button>
@@ -605,6 +645,14 @@ void setupWebServer() {
                     document.getElementById('max-acceleration-axis').textContent = data.max_acceleration_axis;
                     document.getElementById('temperature').textContent = data.temperature.toFixed(1);
                     document.getElementById('pressure').textContent = data.pressure.toFixed(1);
+                    document.getElementById('battery-percentage').textContent = data.battery_percentage;
+                    document.getElementById('battery-voltage').textContent = data.battery_voltage.toFixed(2);
+                    document.getElementById('accel-x').textContent = data.accel_x.toFixed(2);
+                    document.getElementById('accel-y').textContent = data.accel_y.toFixed(2);
+                    document.getElementById('accel-z').textContent = data.accel_z.toFixed(2);
+                    document.getElementById('gyro-x').textContent = data.gyro_x.toFixed(2);
+                    document.getElementById('gyro-y').textContent = data.gyro_y.toFixed(2);
+                    document.getElementById('gyro-z').textContent = data.gyro_z.toFixed(2);
                     
                     const statusDiv = document.getElementById('status');
                     if (data.bmp_status && data.imu_status) {
@@ -681,10 +729,58 @@ String getAltimeterJSON() {
   json += "\"acceleration\":" + String(current_acceleration, 2) + ",";
   json += "\"max_acceleration\":" + String(max_acceleration, 2) + ",";
   json += "\"max_acceleration_axis\":\"" + String(max_acceleration_axis) + "\",";
+  json += "\"accel_x\":" + String(accel_x, 2) + ",";
+  json += "\"accel_y\":" + String(accel_y, 2) + ",";
+  json += "\"accel_z\":" + String(accel_z, 2) + ",";
+  json += "\"gyro_x\":" + String(gyro_x, 2) + ",";
+  json += "\"gyro_y\":" + String(gyro_y, 2) + ",";
+  json += "\"gyro_z\":" + String(gyro_z, 2) + ",";
   json += "\"temperature\":" + String(temperature, 2) + ",";
   json += "\"pressure\":" + String(pressure/100.0, 2) + ",";
+  json += "\"battery_voltage\":" + String(battery_voltage, 2) + ",";
+  json += "\"battery_percentage\":" + String(battery_percentage) + ",";
   json += "\"bmp_status\":" + String(bmp_available ? "true" : "false") + ",";
   json += "\"imu_status\":" + String(imu_available ? "true" : "false");
   json += "}";
   return json;
+}
+
+void updateBattery() {
+  battery_voltage = readBatteryVoltage();
+  battery_percentage = calculateBatteryPercentage(battery_voltage);
+}
+
+float readBatteryVoltage() {
+  // Read ADC value and convert to voltage
+  // ESP32-S3 ADC resolution is 12-bit (0-4095)
+  // Reference voltage is 3.3V, but we need to account for voltage divider
+  int adc_reading = analogRead(BATTERY_PIN);
+  
+  // Convert ADC reading to voltage (assuming 3.3V reference)
+  float voltage = (adc_reading * 3.3) / 4095.0;
+  
+  // If using a voltage divider (e.g., 2:1 ratio), multiply by the ratio
+  // For direct connection, use voltage as-is
+  // For 2:1 voltage divider, multiply by 2
+  voltage *= 2.0;  // Assuming 2:1 voltage divider
+  
+  return voltage;
+}
+
+int calculateBatteryPercentage(float voltage) {
+  // LiPo battery voltage ranges (typical):
+  // 4.2V = 100% (fully charged)
+  // 3.7V = 50% (nominal)
+  // 3.0V = 0% (empty)
+  
+  const float min_voltage = 3.0;  // Empty battery
+  const float max_voltage = 4.2;  // Full battery
+  
+  // Clamp voltage to valid range
+  voltage = constrain(voltage, min_voltage, max_voltage);
+  
+  // Calculate percentage
+  int percentage = (int)(((voltage - min_voltage) / (max_voltage - min_voltage)) * 100.0);
+  
+  return constrain(percentage, 0, 100);
 }

@@ -3,17 +3,17 @@
 
 #include <Arduino.h>
 
-// 5x7 pixel bitmap font
-// Each character is 5 pixels wide, 7 pixels tall
+// 5x7 pixel bitmap font scaled to 50% larger
+// Each character is 7 pixels wide, 10 pixels tall when scaled
 // Stored as 5 bytes per character (each byte represents a column)
 
 class SimpleFont {
 public:
-    static const int CHAR_WIDTH = 5;
-    static const int CHAR_HEIGHT = 7;
-    static const int CHAR_SPACING = 1;
+    static const int CHAR_WIDTH = 10;    // 5 * 2 = 10 (2x scaled)
+    static const int CHAR_HEIGHT = 14;   // 7 * 2 = 14 (2x scaled)
+    static const int CHAR_SPACING = 2;   // Keep spacing proportional
     
-    // Font data - 5 bytes per character
+    // Original font data - 5 bytes per character
     static const uint8_t font_data[][5];
     
     // Get font data for a character
