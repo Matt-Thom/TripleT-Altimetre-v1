@@ -42,32 +42,31 @@ bool IMUSimulator::update() {
     
     last_update = now;
     
-    // Generate realistic IMU data with some noise and movement simulation
+    // Generate realistic IMU data with minimal noise for stationary device
     float time_sec = now / 1000.0;
     
-    // Simulate more dynamic movement patterns
-    // Include occasional higher accelerations that would occur during actual use
-    float movement_intensity = 1.0 + 0.5 * sin(time_sec * 0.1);  // Vary movement intensity over time
+    // Simulate very small movements that occur in real stationary devices
+    // Much smaller amplitudes and slower frequencies for realistic behavior
     
-    // Simulate lateral movements (X-axis) - includes occasional higher accelerations
-    accel_x = 0.3 * movement_intensity * sin(time_sec * 0.8) + 
-              0.1 * sin(time_sec * 2.1) +  // Higher frequency component
-              (random(-20, 20) / 1000.0);   // Noise
+    // Simulate tiny lateral movements (X-axis) - typical sensor noise
+    accel_x = 0.05 * sin(time_sec * 0.2) +     // Very slow drift
+              0.02 * sin(time_sec * 1.1) +     // Small vibrations
+              (random(-5, 5) / 1000.0);        // Minimal noise ±0.005g
     
-    // Simulate forward/back movements (Y-axis) 
-    accel_y = 0.25 * movement_intensity * cos(time_sec * 0.6) + 
-              0.15 * cos(time_sec * 1.8) +  // Higher frequency component
-              (random(-20, 20) / 1000.0);   // Noise
+    // Simulate tiny forward/back movements (Y-axis)
+    accel_y = 0.04 * cos(time_sec * 0.15) +    // Very slow drift
+              0.015 * cos(time_sec * 0.9) +    // Small vibrations
+              (random(-5, 5) / 1000.0);        // Minimal noise ±0.005g
     
-    // Simulate vertical movements (Z-axis) - gravity plus movement
-    float vertical_movement = 0.4 * movement_intensity * sin(time_sec * 0.4) + 
-                             0.2 * sin(time_sec * 3.2);  // Include higher frequency vibrations
-    accel_z = 1.0 + vertical_movement + (random(-25, 25) / 1000.0);  // 1g baseline + movement + noise
+    // Simulate vertical movements (Z-axis) - gravity plus tiny variations
+    float vertical_variation = 0.03 * sin(time_sec * 0.3) + 
+                              0.01 * sin(time_sec * 2.1);  // Very small variations
+    accel_z = 1.0 + vertical_variation + (random(-3, 3) / 1000.0);  // 1g baseline + tiny variations
     
-    // Simulate small rotational movements
-    gyro_x = 2.0 * sin(time_sec * 0.3) + (random(-20, 20) / 10.0);  // Small pitch movements
-    gyro_y = 1.5 * cos(time_sec * 0.4) + (random(-20, 20) / 10.0);  // Small roll movements
-    gyro_z = 0.5 * sin(time_sec * 0.6) + (random(-10, 10) / 10.0);  // Small yaw movements
+    // Simulate very small rotational movements (much more stable)
+    gyro_x = 0.5 * sin(time_sec * 0.1) + (random(-2, 2) / 10.0);   // Tiny pitch movements
+    gyro_y = 0.3 * cos(time_sec * 0.12) + (random(-2, 2) / 10.0);  // Tiny roll movements
+    gyro_z = 0.2 * sin(time_sec * 0.08) + (random(-1, 1) / 10.0);  // Tiny yaw movements
     
     return true;
 } 

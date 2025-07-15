@@ -155,20 +155,25 @@ void setup() {
   if (bmp_available) {
     Serial.println("✓ BMP180 sensor initialized successfully");
     
-    // Take baseline pressure reading
+    // Take initial pressure reading for reference
     delay(1000); // Wait for sensor to stabilize
-    float current_pressure_hpa = bmp.readPressure() / 100.0;
-    baseline_pressure = bmp.readPressure(); // Use current pressure as baseline
+    float current_pressure_pa = bmp.readPressure();
+    float current_pressure_hpa = current_pressure_pa / 100.0;
     
-    // Get initial altitude reading (should be close to 0 with current pressure baseline)
-    float initial_altitude = bmp.readAltitude(baseline_pressure);
+    // Calculate absolute altitude using standard sea level pressure
+    float absolute_altitude = bmp.readAltitude(101325.0);  // Use standard sea level pressure
     
-    // Initialize max_altitude to current altitude
-    max_altitude = initial_altitude;
+    // Set baseline for relative measurements (if needed)
+    baseline_pressure = current_pressure_pa;
+    baseline_altitude = absolute_altitude;
+    
+    // Initialize current and max altitude
+    current_altitude = absolute_altitude;
+    max_altitude = absolute_altitude;
     
     Serial.printf("✓ Current pressure: %.2f hPa\n", current_pressure_hpa);
-    Serial.printf("✓ Using current location as baseline: %.2f hPa\n", baseline_pressure / 100.0);
-    Serial.printf("✓ Current altitude: %.2f m (relative to start)\n", initial_altitude);
+    Serial.printf("✓ Absolute altitude: %.2f m above sea level\n", absolute_altitude);
+    Serial.printf("✓ Baseline pressure: %.2f hPa\n", baseline_pressure / 100.0);
     Serial.printf("✓ Max altitude initialized to: %.2f m\n", max_altitude);
   } else {
     Serial.println("✗ BMP180 sensor initialization failed!");
@@ -268,15 +273,13 @@ void handleButtons() {
   bool button_a_current = (digitalRead(BUTTON_A_PIN) == LOW);
   if (button_a_current && !button_a_pressed && (now - last_button_press) > button_debounce) {
     last_button_press = now;
-    Serial.println("Button A: Resetting max altitude and acceleration to zero");
+    Serial.println("Button A: Resetting max altitude and acceleration");
     
     if (bmp_available) {
-      // Reset baseline pressure to current pressure for accurate relative altitude
-      baseline_pressure = bmp.readPressure();
-      max_altitude = 0.0;
+      // Reset max altitude to current altitude
+      max_altitude = current_altitude;
       display.resetMaxAltitude();
-      Serial.printf("✓ Baseline pressure reset to: %.2f hPa\n", baseline_pressure / 100.0);
-      Serial.printf("✓ Max altitude reset to 0m\n");
+      Serial.printf("✓ Max altitude reset to current: %.2f m\n", max_altitude);
     }
     if (imu_available) {
       max_acceleration = 0.0;
@@ -333,10 +336,11 @@ void updateSensors() {
   if (bmp_available) {
     temperature = bmp.readTemperature();
     pressure = bmp.readPressure();
-    current_altitude = bmp.readAltitude(baseline_pressure);  // Use absolute altitude
+    
+    // Calculate absolute altitude using standard sea level pressure
+    current_altitude = bmp.readAltitude(101325.0);  // Standard sea level pressure
     
     // Track maximum altitude
-    // Update max_altitude if current reading is higher
     if (current_altitude > max_altitude) {
       max_altitude = current_altitude;
     }

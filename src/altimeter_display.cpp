@@ -124,45 +124,13 @@ void AltimeterDisplay::drawAltitudeData() {
         
         y += 20;  // Good spacing
         
-        // Temperature and pressure on separate lines for readability
-        drawText(2, y, "TEMP", COLOR_TEMP);
-        drawNumber(56, y, temperature, 1, COLOR_TEMP);
-        drawText(112, y, "C", COLOR_TEMP);
-        
-        y += 20;  // Good spacing
-        
-        drawText(2, y, "hPa", COLOR_PRESSURE);
-        drawNumber(56, y, pressure/100.0, 0, COLOR_PRESSURE);
-        
-        
-    } else {
-        // Detailed altitude mode with better spacing
-        
-        // Current altitude
-        drawText(2, y, "ALT", COLOR_ALTITUDE);
-        y += 16;  // Space for label
-        drawNumber(5, y, current_altitude, 2, COLOR_ALTITUDE);
-        drawText(80, y, "m", COLOR_ALTITUDE);
-        
-        y += 25;  // Good spacing
-        
-        // Maximum altitude
-        drawText(2, y, "MAX ", COLOR_MAX_ALT);
-        y += 16;  // Space for label
-        drawNumber(5, y, max_altitude, 2, COLOR_MAX_ALT);
-        drawText(80, y, "m", COLOR_MAX_ALT);
-        
-        y += 25;  // Good spacing
-        
         // Altitude difference - only if there's space
-        if (y < (DATA_AREA_Y + DATA_AREA_HEIGHT - 35)) {
-            float diff = current_altitude - max_altitude;
-            uint16_t diff_color = (diff >= 0) ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-            drawText(2, y, "DIFF: ", diff_color);
-            y += 16;  // Space for label
-            drawNumber(5, y, diff, 2, diff_color);
-            drawText(80, y, "m", diff_color);
-        }
+        float diff = current_altitude - max_altitude;
+        uint16_t diff_color = (diff >= 0) ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
+        drawText(2, y, "DIF", diff_color);
+        drawNumber(56, y, diff, 2, diff_color);
+        drawText(112, y, "m", diff_color);
+        
     }
 }
 
