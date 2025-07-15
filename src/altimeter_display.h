@@ -51,8 +51,8 @@ private:
     void drawAltitudeData();
     void drawEnvironmentalData();
     void drawIMUData();
+    void drawGyroData();
     void drawBatterySymbol(int x, int y, int percentage);
-    void drawBarGraph(int x, int y, int width, int height, float value, float min_val, float max_val, uint16_t color);
     void drawNumber(int x, int y, float value, int decimals, uint16_t color);
     void drawText(int x, int y, const char* text, uint16_t color);
     void clearArea(int x, int y, int width, int height);
@@ -77,7 +77,8 @@ public:
         MODE_ALTITUDE_DETAIL = 1,
         MODE_ENVIRONMENTAL = 2,
         MODE_IMU_DETAIL = 3,
-        MODE_COUNT = 4
+        MODE_GYRO_DETAIL = 4,
+        MODE_COUNT = 5
     };
 };
 

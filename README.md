@@ -5,14 +5,19 @@ A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microco
 ## Recent Improvements
 
 ### ✅ Major Display Layout Fixes
+- **Added Dedicated Gyroscope Screen**: New 5th screen for gyroscope data separate from accelerometer
+- **Improved IMU Screen Focus**: IMU screen now shows only accelerometer data with magnitude calculation
+- **Removed Unused Code**: Cleaned up unused functions like drawBarGraph to reduce code size
+- **Enhanced Screen Navigation**: Now 5 screens total for better data organization
 - **Removed Text Cutoff Issues**: Fixed header and text being cut off at top and bottom of screen
 - **Eliminated Status Bar**: Moved battery icon to header, removed unnecessary sensor status indicators
 - **Compact Battery Icon**: Battery symbol now in top right corner of header without percentage text
 - **Fixed Zero Battery Issue**: Corrected battery percentage display logic to show proper values
 - **Improved Screen Layouts**: 
-  - **ALT Screen**: Removed confusing bar graph, improved spacing, ensured all text fits
+  - **ALTIM Screen**: Removed confusing bar graph, improved spacing, ensured all text fits
   - **ENV Screen**: Removed unnecessary bar graphs, fixed ALT/MAX overlap, separate lines for better readability
-  - **IMU Screen**: Removed ALT/MAX data, fixed accelerometer data overlap, smart space management
+  - **IMU Screen**: Focused on accelerometer data only with magnitude calculation
+  - **GYRO Screen**: Dedicated gyroscope data display with magnitude calculation
 - **Better Space Management**: Increased data area from 93px to 112px height for more content
 - **Enhanced Readability**: All text now properly positioned and visible on 128x128 display
 
@@ -22,11 +27,12 @@ A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microco
 - **Compact Battery Display**: Redesigned battery icon and percentage display to avoid text conflicts
 - **Better Spacing**: Increased vertical spacing between elements to prevent visual clutter
 - **Optimized Font Scaling**: Improved text positioning and sizing for small 128x128 display
-- **Multiple Display Screens**: 4 comprehensive screens accessible via button press:
-  - **Overview**: Current altitude, max altitude, temperature, pressure, and acceleration
+- **Multiple Display Screens**: 5 comprehensive screens accessible via button press:
+  - **Overview**: Current altitude, max altitude, temperature, pressure
   - **Altitude Detail**: Detailed altitude information with difference from maximum
-  - **Environmental**: Temperature and pressure with bar graph visualizations
-  - **IMU Detail**: Full accelerometer and gyroscope data display
+  - **Environmental**: Temperature and pressure data
+  - **IMU Detail**: Accelerometer data with magnitude calculation
+  - **Gyroscope Detail**: Gyroscope data with magnitude calculation
 - **Battery Monitoring**: Battery symbol with percentage and voltage display in top right of all screens
 
 ### ✅ Fixed Altitude Calculation
@@ -87,12 +93,11 @@ A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microco
 
 ## Display Screens
 
-### Screen 1: Overview Mode ("ALT")
+### Screen 1: Overview Mode ("ALTIM")
 - Current altitude (large, green text) - no cutoff issues
 - Maximum altitude (red text) - proper spacing
 - Temperature (separate line) - improved readability
 - Pressure (separate line) - better positioning
-- Acceleration magnitude (if IMU available and space permits) - smart display
 - Battery icon in header top right - compact design
 
 ### Screen 2: Altitude Detail Mode ("ALT")
@@ -102,24 +107,29 @@ A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microco
 - Battery icon in header top right - compact design
 
 ### Screen 3: Environmental Mode ("ENV")
-- Current altitude (separate line) - no overlap
-- Maximum altitude (separate line) - improved positioning
 - Temperature with decimal precision - clear display
-- Pressure (if space permits) - proper formatting
+- Pressure display - proper formatting
 - Battery icon in header top right - compact design
 
 ### Screen 4: IMU Detail Mode ("IMU")
 - Accelerometer data (X, Y, Z axes) - no overlap issues
-- Gyroscope data (X, Y, Z axes, if space permits) - smart display
+- Acceleration magnitude calculation - comprehensive view
 - Connection status and troubleshooting info (if IMU not found) - clear messaging
 - Battery icon in header top right - compact design
-- No altitude data (focused on IMU only) - cleaner layout
+- Focused on accelerometer only - cleaner layout
+
+### Screen 5: Gyroscope Detail Mode ("GYRO")
+- Gyroscope data (X, Y, Z axes) - dedicated display
+- Gyroscope magnitude calculation - comprehensive view
+- Connection status and troubleshooting info (if IMU not found) - clear messaging
+- Battery icon in header top right - compact design
+- Focused on gyroscope only - cleaner layout
 
 ## Controls
 
 ### Button Functions
 - **Button A (GPIO0)**: Reset altitude baseline and maximum values - Sets current location as reference point and resets tracking
-- **Button B (GPIO47)**: Cycle through 4 display screens (Overview → Altitude Detail → Environmental → IMU Detail)
+- **Button B (GPIO47)**: Cycle through 5 display screens (Overview → Altitude Detail → Environmental → IMU Detail → Gyroscope Detail)
 - **Button C (GPIO48)**: Toggle display on/off for power saving
 
 ### LED Status Indicators
@@ -283,6 +293,10 @@ TripleT-Altimetre-v1/
 ## Version History
 
 ### v2.1 (Current)
+- ✅ **NEW 5-SCREEN SYSTEM**: Added dedicated gyroscope screen separate from accelerometer
+- ✅ **IMPROVED IMU FOCUS**: IMU screen now shows only accelerometer data with magnitude
+- ✅ **CODE CLEANUP**: Removed unused functions (drawBarGraph) to reduce code size
+- ✅ **ENHANCED NAVIGATION**: 5 screens total for better data organization
 - ✅ **MAJOR DISPLAY FIXES**: Resolved all text cutoff and overlap issues
 - ✅ Eliminated status bar, moved battery icon to header top right corner
 - ✅ Fixed zero battery percentage display issue
@@ -296,7 +310,7 @@ TripleT-Altimetre-v1/
 - ✅ Optimized font scaling and positioning for better readability
 - ✅ Enhanced status bar layout with better sensor indicator positioning
 - ✅ Implemented 2x larger fonts for better readability
-- ✅ Added 4 comprehensive display screens
+- ✅ Added comprehensive display screens
 - ✅ Fixed altitude calculation with proper baseline calibration
 - ✅ Added battery monitoring with voltage and percentage display
 - ✅ Enhanced web interface with complete sensor data
