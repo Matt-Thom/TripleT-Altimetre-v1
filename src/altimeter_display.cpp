@@ -112,14 +112,14 @@ void AltimeterDisplay::drawAltitudeData() {
         
         // Current altitude - large display
         drawText(2, y, "ALT", COLOR_ALTITUDE);
-        drawNumber(56, y, current_altitude, 1, COLOR_ALTITUDE);
+        drawNumber(44, y, current_altitude, 1, COLOR_ALTITUDE);
         drawText(112, y, "m", COLOR_ALTITUDE);
         
         y += 20;  // Good spacing
         
         // Max altitude
         drawText(2, y, "MAX", COLOR_MAX_ALT);
-        drawNumber(56, y, max_altitude, 1, COLOR_MAX_ALT);
+        drawNumber(44, y, max_altitude, 1, COLOR_MAX_ALT);
         drawText(112, y, "m", COLOR_MAX_ALT);
         
         y += 20;  // Good spacing
@@ -128,7 +128,7 @@ void AltimeterDisplay::drawAltitudeData() {
         float diff = current_altitude - max_altitude;
         uint16_t diff_color = (diff >= 0) ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
         drawText(2, y, "DIF", diff_color);
-        drawNumber(56, y, diff, 2, diff_color);
+        drawNumber(44, y, diff, 2, diff_color);
         drawText(112, y, "m", diff_color);
         
     }
@@ -206,19 +206,19 @@ void AltimeterDisplay::drawGyroData() {
         
         drawText(2, y, "Y", COLOR_IMU);
         drawNumber(32, y, gyro_y, 1, COLOR_IMU);
-        drawText(100, y, "°/s", COLOR_IMU);
+        drawText(90, y, "°/s", COLOR_IMU);
         y += 18;  // Good spacing
         
         drawText(2, y, "Z", COLOR_IMU);
         drawNumber(32, y, gyro_z, 1, COLOR_IMU);
-        drawText(100, y, "°/s", COLOR_IMU);
+        drawText(90, y, "°/s", COLOR_IMU);
         y += 25;  // Extra spacing
         
         // Calculate and display gyroscope magnitude
         float gyro_mag = sqrt(gyro_x*gyro_x + gyro_y*gyro_y + gyro_z*gyro_z);
         drawText(2, y, "MAG", COLOR_IMU);
-        drawNumber(32, y, gyro_mag, 1, COLOR_IMU);
-        drawText(100, y, "°/s", COLOR_IMU);
+        drawNumber(48, y, gyro_mag, 1, COLOR_IMU);
+        drawText(90, y, "°/s", COLOR_IMU);
         
     } else {
         drawText(2, y, "IMU NOT FOUND", COLOR_STATUS_ERROR);
