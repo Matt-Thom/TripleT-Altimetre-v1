@@ -4,9 +4,21 @@ A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microco
 
 ## Recent Improvements
 
+### ✅ Major Display Layout Fixes
+- **Removed Text Cutoff Issues**: Fixed header and text being cut off at top and bottom of screen
+- **Eliminated Status Bar**: Moved battery icon to header, removed unnecessary sensor status indicators
+- **Compact Battery Icon**: Battery symbol now in top right corner of header without percentage text
+- **Fixed Zero Battery Issue**: Corrected battery percentage display logic to show proper values
+- **Improved Screen Layouts**: 
+  - **ALT Screen**: Removed confusing bar graph, improved spacing, ensured all text fits
+  - **ENV Screen**: Removed unnecessary bar graphs, fixed ALT/MAX overlap, separate lines for better readability
+  - **IMU Screen**: Removed ALT/MAX data, fixed accelerometer data overlap, smart space management
+- **Better Space Management**: Increased data area from 93px to 112px height for more content
+- **Enhanced Readability**: All text now properly positioned and visible on 128x128 display
+
 ### ✅ Enhanced Display System
 - **Improved Layout Design**: Fixed text overlap issues and optimized spacing for better readability
-- **Shortened Text Labels**: Reduced header text ("ALTIMETER" → "ALTIM", "ENVIRONMENT" → "ENV") to prevent overlap
+- **Shortened Text Labels**: Reduced header text ("ALTIMETER" → "ALT", "ENVIRONMENT" → "ENV") to prevent overlap
 - **Compact Battery Display**: Redesigned battery icon and percentage display to avoid text conflicts
 - **Better Spacing**: Increased vertical spacing between elements to prevent visual clutter
 - **Optimized Font Scaling**: Improved text positioning and sizing for small 128x128 display
@@ -75,32 +87,33 @@ A precision altimeter built on the LOLIN S3 Mini Pro board with ESP32-S3 microco
 
 ## Display Screens
 
-### Screen 1: Overview Mode ("ALTIM")
-- Current altitude (large, green text) - improved positioning
-- Maximum altitude (red text) - better spacing
-- Temperature and pressure (compact display) - shortened labels
-- Altitude bar graph visualization - optimized width
-- Acceleration magnitude (if IMU available) - better alignment
-- Battery symbol in top right corner - compact design
+### Screen 1: Overview Mode ("ALT")
+- Current altitude (large, green text) - no cutoff issues
+- Maximum altitude (red text) - proper spacing
+- Temperature (separate line) - improved readability
+- Pressure (separate line) - better positioning
+- Acceleration magnitude (if IMU available and space permits) - smart display
+- Battery icon in header top right - compact design
 
 ### Screen 2: Altitude Detail Mode ("ALT")
-- Current altitude (large, with 2 decimal places) - improved spacing
-- Maximum altitude (with 2 decimal places) - better layout
-- Difference from maximum altitude (color-coded) - enhanced positioning
-- Battery symbol in top right corner - optimized placement
+- Current altitude (large, with 2 decimal places) - proper spacing
+- Maximum altitude (with 2 decimal places) - no overlap
+- Difference from maximum altitude (if space permits) - color-coded
+- Battery icon in header top right - compact design
 
 ### Screen 3: Environmental Mode ("ENV")
-- Current and max altitude (compact, at top) - improved alignment
-- Temperature with bar graph visualization - better spacing
-- Pressure with bar graph visualization - optimized layout
-- Battery symbol in top right corner - compact design
+- Current altitude (separate line) - no overlap
+- Maximum altitude (separate line) - improved positioning
+- Temperature with decimal precision - clear display
+- Pressure (if space permits) - proper formatting
+- Battery icon in header top right - compact design
 
 ### Screen 4: IMU Detail Mode ("IMU")
-- Current and max altitude (compact, at top) - improved positioning
-- Detailed accelerometer data (X, Y, Z axes) - better spacing
-- Detailed gyroscope data (X, Y, Z axes) - optimized layout
-- Connection status and troubleshooting info - enhanced readability
-- Battery symbol in top right corner - compact design
+- Accelerometer data (X, Y, Z axes) - no overlap issues
+- Gyroscope data (X, Y, Z axes, if space permits) - smart display
+- Connection status and troubleshooting info (if IMU not found) - clear messaging
+- Battery icon in header top right - compact design
+- No altitude data (focused on IMU only) - cleaner layout
 
 ## Controls
 
@@ -270,8 +283,14 @@ TripleT-Altimetre-v1/
 ## Version History
 
 ### v2.1 (Current)
+- ✅ **MAJOR DISPLAY FIXES**: Resolved all text cutoff and overlap issues
+- ✅ Eliminated status bar, moved battery icon to header top right corner
+- ✅ Fixed zero battery percentage display issue
+- ✅ Removed confusing bar graphs and improved screen-specific layouts
+- ✅ Increased usable display area from 93px to 112px height
+- ✅ Smart space management - content adapts to fit available space
 - ✅ Fixed display layout issues with text overlap and poor readability
-- ✅ Shortened text labels and headers to prevent overlap ("ALTIMETER" → "ALTIM", etc.)
+- ✅ Shortened text labels and headers to prevent overlap ("ALTIMETER" → "ALT", etc.)
 - ✅ Redesigned battery icon and positioning to avoid text conflicts
 - ✅ Improved vertical spacing between display elements
 - ✅ Optimized font scaling and positioning for better readability

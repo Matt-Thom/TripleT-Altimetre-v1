@@ -9,10 +9,10 @@ private:
     TFTTest* tft;
     
     // Display layout constants
-    static const int HEADER_HEIGHT = 18;      // Reduced from 20
-    static const int STATUS_HEIGHT = 14;      // Reduced from 15
+    static const int HEADER_HEIGHT = 16;      // Reduced further to give more space
+    static const int STATUS_HEIGHT = 0;       // Remove status bar completely
     static const int DATA_AREA_Y = HEADER_HEIGHT + STATUS_HEIGHT;
-    static const int DATA_AREA_HEIGHT = 96;   // Increased from 93
+    static const int DATA_AREA_HEIGHT = 112;  // Increased significantly (128 - 16 = 112)
     
     // Colors (RGB565)
     static const uint16_t COLOR_BACKGROUND = 0x0000;  // Black

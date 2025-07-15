@@ -51,7 +51,7 @@ void AltimeterDisplay::drawHeader() {
     const char* title;
     switch (display_mode) {
         case MODE_OVERVIEW:
-            title = "ALTIM";  // Shortened from "ALTIMETER"
+            title = "ALT";  // Shortened from "ALTIMETER"
             break;
         case MODE_ALTITUDE_DETAIL:
             title = "ALT";    // Shortened from "ALTITUDE"
@@ -63,31 +63,19 @@ void AltimeterDisplay::drawHeader() {
             title = "IMU";    // Shortened from "IMU DATA"
             break;
         default:
-            title = "ALTIM";
+            title = "ALT";
             break;
     }
     
-    // Simple text rendering using rectangles (since we don't have fonts)
-    drawText(2, 5, title, COLOR_TEXT);
+    // Draw title text
+    drawText(2, 3, title, COLOR_TEXT);
+    
+    // Draw battery symbol in top right corner of header
+    drawBatterySymbol(128 - 20, 2, battery_percentage);
 }
 
 void AltimeterDisplay::drawStatusBar() {
-    // Clear status area
-    tft->fillRect(0, HEADER_HEIGHT, 128, STATUS_HEIGHT, COLOR_BACKGROUND);
-    
-    // Draw sensor status indicators with better spacing
-    // BMP180 status - moved closer to left edge
-    uint16_t bmp_color = bmp_status ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-    tft->fillRect(2, HEADER_HEIGHT + 3, 6, 6, bmp_color);
-    drawText(10, HEADER_HEIGHT + 2, "BMP", COLOR_TEXT);
-    
-    // IMU status - adjusted position
-    uint16_t imu_color = imu_status ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-    tft->fillRect(35, HEADER_HEIGHT + 3, 6, 6, imu_color);
-    drawText(43, HEADER_HEIGHT + 2, "IMU", COLOR_TEXT);
-    
-    // Battery symbol in top right corner with more space
-    drawBatterySymbol(128 - 45, HEADER_HEIGHT + 1, battery_percentage);
+    // Status bar removed - battery now in header, sensor status not needed on all screens
 }
 
 void AltimeterDisplay::drawDataArea() {
@@ -111,43 +99,40 @@ void AltimeterDisplay::drawDataArea() {
 }
 
 void AltimeterDisplay::drawAltitudeData() {
-    int y = DATA_AREA_Y + 8;  // Increased top margin
+    int y = DATA_AREA_Y + 5;  // Start with small margin
     
     if (display_mode == MODE_OVERVIEW) {
-        // Compact overview mode with improved spacing
+        // Overview mode - clean and readable
         
         // Current altitude - large display
         drawText(2, y, "ALT:", COLOR_ALTITUDE);
         drawNumber(28, y, current_altitude, 1, COLOR_ALTITUDE);
         drawText(80, y, "m", COLOR_ALTITUDE);
         
-        y += 18;  // Increased spacing
+        y += 20;  // Good spacing
         
         // Max altitude
         drawText(2, y, "MAX:", COLOR_MAX_ALT);
         drawNumber(28, y, max_altitude, 1, COLOR_MAX_ALT);
         drawText(80, y, "m", COLOR_MAX_ALT);
         
-        y += 18;  // Increased spacing
+        y += 20;  // Good spacing
         
-        // Temperature and pressure (compact) - shortened labels
-        drawText(2, y, "T:", COLOR_TEMP);
-        drawNumber(16, y, temperature, 1, COLOR_TEMP);
-        drawText(42, y, "C", COLOR_TEMP);
+        // Temperature and pressure on separate lines for readability
+        drawText(2, y, "TEMP:", COLOR_TEMP);
+        drawNumber(35, y, temperature, 1, COLOR_TEMP);
+        drawText(80, y, "C", COLOR_TEMP);
         
-        drawText(55, y, "P:", COLOR_PRESSURE);
-        drawNumber(69, y, pressure/100.0, 0, COLOR_PRESSURE);
+        y += 20;  // Good spacing
         
-        y += 18;  // Increased spacing
+        drawText(2, y, "PRESS:", COLOR_PRESSURE);
+        drawNumber(40, y, pressure/100.0, 0, COLOR_PRESSURE);
+        drawText(80, y, "hPa", COLOR_PRESSURE);
         
-        // Altitude bar graph
-        float alt_range = max(abs(current_altitude), abs(max_altitude)) + 10;
-        drawBarGraph(2, y, 124, 10, current_altitude, -alt_range, alt_range, COLOR_ALTITUDE);
+        y += 20;  // Good spacing
         
-        y += 18;  // Increased spacing
-        
-        // IMU status (if available)
-        if (imu_status) {
+        // IMU status (if available) - ensure it fits on screen
+        if (imu_status && y < (DATA_AREA_Y + DATA_AREA_HEIGHT - 15)) {
             // Simple acceleration magnitude indicator
             float accel_mag = sqrt(accel_x*accel_x + accel_y*accel_y + accel_z*accel_z);
             drawText(2, y, "ACC:", COLOR_IMU);
@@ -158,122 +143,120 @@ void AltimeterDisplay::drawAltitudeData() {
     } else {
         // Detailed altitude mode with better spacing
         
-        // Current altitude - shortened label
-        drawText(2, y, "CURRENT ALT", COLOR_ALTITUDE);
-        y += 14;  // Increased spacing
+        // Current altitude
+        drawText(2, y, "ALT: ", COLOR_ALTITUDE);
+        y += 16;  // Space for label
         drawNumber(5, y, current_altitude, 2, COLOR_ALTITUDE);
         drawText(80, y, "m", COLOR_ALTITUDE);
         
-        y += 22;  // Increased spacing
+        y += 25;  // Good spacing
         
-        // Maximum altitude - shortened label
-        drawText(2, y, "MAX ALT", COLOR_MAX_ALT);
-        y += 14;  // Increased spacing
+        // Maximum altitude
+        drawText(2, y, "MAX: ", COLOR_MAX_ALT);
+        y += 16;  // Space for label
         drawNumber(5, y, max_altitude, 2, COLOR_MAX_ALT);
         drawText(80, y, "m", COLOR_MAX_ALT);
         
-        y += 22;  // Increased spacing
+        y += 25;  // Good spacing
         
-        // Altitude difference - shortened label
-        float diff = current_altitude - max_altitude;
-        uint16_t diff_color = (diff >= 0) ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
-        drawText(2, y, "DIFF", diff_color);
-        y += 14;  // Increased spacing
-        drawNumber(5, y, diff, 2, diff_color);
-        drawText(80, y, "m", diff_color);
+        // Altitude difference - only if there's space
+        if (y < (DATA_AREA_Y + DATA_AREA_HEIGHT - 35)) {
+            float diff = current_altitude - max_altitude;
+            uint16_t diff_color = (diff >= 0) ? COLOR_STATUS_OK : COLOR_STATUS_ERROR;
+            drawText(2, y, "DIFF: ", diff_color);
+            y += 16;  // Space for label
+            drawNumber(5, y, diff, 2, diff_color);
+            drawText(80, y, "m", diff_color);
+        }
     }
 }
 
 void AltimeterDisplay::drawEnvironmentalData() {
-    int y = DATA_AREA_Y + 8;  // Increased top margin
+    int y = DATA_AREA_Y + 5;  // Start with small margin
     
-    // Always show current and max altitude at top - shortened labels
+    // Current and max altitude on separate lines to avoid overlap
     drawText(2, y, "ALT:", COLOR_ALTITUDE);
-    drawNumber(24, y, current_altitude, 1, COLOR_ALTITUDE);
-    drawText(65, y, "MAX:", COLOR_MAX_ALT);
-    drawNumber(87, y, max_altitude, 1, COLOR_MAX_ALT);
-    y += 18;  // Increased spacing
+    drawNumber(28, y, current_altitude, 1, COLOR_ALTITUDE);
+    drawText(80, y, "m", COLOR_ALTITUDE);
     
-    // Temperature - shortened label
-    drawText(2, y, "TEMP", COLOR_TEMP);
-    y += 14;  // Increased spacing
+    y += 20;  // Good spacing
+    
+    drawText(2, y, "MAX:", COLOR_MAX_ALT);
+    drawNumber(28, y, max_altitude, 1, COLOR_MAX_ALT);
+    drawText(80, y, "m", COLOR_MAX_ALT);
+    
+    y += 25;  // Extra spacing before environmental data
+    
+    // Temperature
+    drawText(2, y, "TEMP:", COLOR_TEMP);
+    y += 16;  // Space for label
     drawNumber(5, y, temperature, 2, COLOR_TEMP);
     drawText(65, y, "°C", COLOR_TEMP);
     
-    y += 18;  // Increased spacing
+    y += 25;  // Good spacing
     
-    // Temperature bar graph (-10 to 40°C range)
-    drawBarGraph(2, y, 124, 8, temperature, -10, 40, COLOR_TEMP);
-    
-    y += 18;  // Increased spacing
-    
-    // Pressure - shortened label
-    drawText(2, y, "PRESS", COLOR_PRESSURE);
-    y += 14;  // Increased spacing
-    drawNumber(5, y, pressure/100.0, 1, COLOR_PRESSURE);
-    drawText(65, y, "hPa", COLOR_PRESSURE);
-    
-    y += 18;  // Increased spacing
-    
-    // Pressure bar graph (900 to 1100 hPa range)
-    drawBarGraph(2, y, 124, 8, pressure/100.0, 900, 1100, COLOR_PRESSURE);
+    // Pressure - ensure it fits on screen
+    if (y < (DATA_AREA_Y + DATA_AREA_HEIGHT - 35)) {
+        drawText(2, y, "PRESS:", COLOR_PRESSURE);
+        y += 16;  // Space for label
+        drawNumber(5, y, pressure/100.0, 1, COLOR_PRESSURE);
+        drawText(65, y, "hPa", COLOR_PRESSURE);
+    }
 }
 
 void AltimeterDisplay::drawIMUData() {
-    int y = DATA_AREA_Y + 8;  // Increased top margin
-    
-    // Always show current and max altitude at top - shortened labels
-    drawText(2, y, "ALT:", COLOR_ALTITUDE);
-    drawNumber(24, y, current_altitude, 1, COLOR_ALTITUDE);
-    drawText(65, y, "MAX:", COLOR_MAX_ALT);
-    drawNumber(87, y, max_altitude, 1, COLOR_MAX_ALT);
-    y += 18;  // Increased spacing
+    int y = DATA_AREA_Y + 5;  // Start with small margin
     
     if (imu_status) {
-        // Acceleration data - shortened label
-        drawText(2, y, "ACCEL", COLOR_IMU);
-        y += 12;  // Increased spacing
+        // Acceleration data
+        drawText(2, y, "ACCEL:", COLOR_IMU);
+        y += 16;  // Space for label
         
         drawText(2, y, "X:", COLOR_IMU);
         drawNumber(16, y, accel_x, 2, COLOR_IMU);
-        drawText(50, y, "g", COLOR_IMU);
-        y += 10;  // Increased spacing
+        drawText(55, y, "g", COLOR_IMU);
+        y += 18;  // Good spacing
         
         drawText(2, y, "Y:", COLOR_IMU);
         drawNumber(16, y, accel_y, 2, COLOR_IMU);
-        drawText(50, y, "g", COLOR_IMU);
-        y += 10;  // Increased spacing
+        drawText(55, y, "g", COLOR_IMU);
+        y += 18;  // Good spacing
         
         drawText(2, y, "Z:", COLOR_IMU);
         drawNumber(16, y, accel_z, 2, COLOR_IMU);
-        drawText(50, y, "g", COLOR_IMU);
-        y += 14;  // Increased spacing
+        drawText(55, y, "g", COLOR_IMU);
+        y += 25;  // Extra spacing before gyro
         
-        // Gyroscope data - shortened label
-        drawText(2, y, "GYRO", COLOR_IMU);
-        y += 12;  // Increased spacing
-        
-        drawText(2, y, "X:", COLOR_IMU);
-        drawNumber(16, y, gyro_x, 1, COLOR_IMU);
-        drawText(55, y, "°/s", COLOR_IMU);
-        y += 10;  // Increased spacing
-        
-        drawText(2, y, "Y:", COLOR_IMU);
-        drawNumber(16, y, gyro_y, 1, COLOR_IMU);
-        drawText(55, y, "°/s", COLOR_IMU);
-        y += 10;  // Increased spacing
-        
-        drawText(2, y, "Z:", COLOR_IMU);
-        drawNumber(16, y, gyro_z, 1, COLOR_IMU);
-        drawText(55, y, "°/s", COLOR_IMU);
+        // Gyroscope data - only if there's space
+        if (y < (DATA_AREA_Y + DATA_AREA_HEIGHT - 70)) {
+            drawText(2, y, "GYRO:", COLOR_IMU);
+            y += 16;  // Space for label
+            
+            drawText(2, y, "X:", COLOR_IMU);
+            drawNumber(16, y, gyro_x, 1, COLOR_IMU);
+            drawText(55, y, "°/s", COLOR_IMU);
+            y += 18;  // Good spacing
+            
+            drawText(2, y, "Y:", COLOR_IMU);
+            drawNumber(16, y, gyro_y, 1, COLOR_IMU);
+            drawText(55, y, "°/s", COLOR_IMU);
+            y += 18;  // Good spacing
+            
+            // Only show Z if there's space
+            if (y < (DATA_AREA_Y + DATA_AREA_HEIGHT - 20)) {
+                drawText(2, y, "Z:", COLOR_IMU);
+                drawNumber(16, y, gyro_z, 1, COLOR_IMU);
+                drawText(55, y, "°/s", COLOR_IMU);
+            }
+        }
         
     } else {
         drawText(2, y, "IMU NOT FOUND", COLOR_STATUS_ERROR);
-        y += 18;  // Increased spacing
+        y += 20;  // Good spacing
         drawText(2, y, "Check wiring", COLOR_TEXT);
-        y += 14;  // Increased spacing
+        y += 18;  // Good spacing
         drawText(2, y, "SDA: GPIO12", COLOR_TEXT);
-        y += 10;  // Increased spacing
+        y += 18;  // Good spacing
         drawText(2, y, "SCL: GPIO11", COLOR_TEXT);
     }
 }
@@ -347,11 +330,15 @@ void AltimeterDisplay::clearArea(int x, int y, int width, int height) {
 }
 
 void AltimeterDisplay::drawBatterySymbol(int x, int y, int percentage) {
-    // Battery symbol dimensions - made more compact
-    const int width = 14;
-    const int height = 8;
-    const int tip_width = 2;
-    const int tip_height = 3;
+    // Battery symbol dimensions - very compact for header
+    const int width = 12;
+    const int height = 6;
+    const int tip_width = 1;
+    const int tip_height = 2;
+    
+    // Ensure percentage is valid (fix zero percent issue)
+    if (percentage < 0) percentage = 0;
+    if (percentage > 100) percentage = 100;
     
     // Draw battery outline
     tft->drawRect(x, y, width, height, COLOR_TEXT);
@@ -380,10 +367,7 @@ void AltimeterDisplay::drawBatterySymbol(int x, int y, int percentage) {
         tft->fillRect(x + 1, y + 1, fill_width, height - 2, fill_color);
     }
     
-    // Draw percentage text next to battery - more compact
-    char percent_text[4];
-    sprintf(percent_text, "%d%%", percentage);
-    drawText(x + width + tip_width + 1, y, percent_text, COLOR_TEXT);
+    // No percentage text - just the icon
 }
 
 // Public methods
